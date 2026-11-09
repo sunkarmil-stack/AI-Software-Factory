@@ -1,0 +1,50 @@
+# Allow and deny cases. Promotion of a policy version fails if any case fails (REQ 047).
+- name: agent cannot read prod secrets
+  request: {actor: {kind: agent}, action: secrets.read, env: prod, side_effect: read, grant: true, tenant_match: true, tool_registered: true}
+  expect: deny
+- name: agent cannot push to main
+  request: {actor: {kind: agent}, action: repo.push, branch: main, env: sandbox, side_effect: write, grant: true, tenant_match: true, tool_registered: true}
+  expect: deny
+- name: agent can push to its own branch
+  request: {actor: {kind: agent}, action: repo.push, branch: agent/task-1, env: sandbox, side_effect: write, grant: true, tenant_match: true, tool_registered: true}
+  expect: allow
+  tier: 1
+- name: agent cannot approve
+  request: {actor: {kind: agent}, action: approval.approve, grant: true, tenant_match: true, tool_registered: true}
+  expect: deny
+- name: agent cannot sign artifacts even if granted
+  request: {actor: {kind: agent}, action: artifact.sign, grant: true, tenant_match: true, tool_registered: true, side_effect: write, env: sandbox}
+  expect: deny
+- name: agent naming itself release owner still denied
+  request: {actor: {kind: agent, roles: [release_owner]}, action: approval.approve}
+  expect: deny
+- name: agent cannot choose tier
+  request: {actor: {kind: agent}, action: payments.ledger_write, side_effect: consequential, env: prod, tier: 0, grant: true, tenant_match: true, tool_registered: true}
+  expect: deny
+  tier: 3
+- name: consequential write allowed with approval
+  request: {actor: {kind: agent}, action: payments.ledger_write, side_effect: consequential, env: prod, grant: true, tenant_match: true, tool_registered: true, approval_valid: true}
+  expect: allow
+  tier: 3
+- name: cross tenant denied
+  request: {actor: {kind: agent}, action: kb.search, side_effect: read, env: nonprod, grant: true, tenant_match: false, tool_registered: true}
+  expect: deny
+- name: ungranted tool denied
+  request: {actor: {kind: agent}, action: prod_db.query, side_effect: read, env: prod, grant: false, tenant_match: true, tool_registered: true}
+  expect: deny
+- name: ci builder may sign
+  request: {actor: {kind: workload, id: ci-builder}, action: artifact.sign}
+  expect: allow
+- name: test agent deleting a production record is a production action
+  request: {actor: {kind: agent, id: test-agent}, action: accounts.delete, side_effect: write, env: prod, reversible: false, grant: true, tenant_match: true, tool_registered: true}
+  expect: deny
+  tier: 3
+- name: unapproved egress denied
+  request: {actor: {kind: agent}, action: net.fetch, grant: true, tenant_match: true, tool_registered: true}
+  expect: deny
+- name: human policy change requires independent review
+  request: {actor: {kind: human}, action: policy.change, independent_review: false}
+  expect: deny
+- name: agent cannot edit protected validation assets
+  request: {actor: {kind: agent}, action: validation_asset.change, grant: true, tenant_match: true, tool_registered: true}
+  expect: deny

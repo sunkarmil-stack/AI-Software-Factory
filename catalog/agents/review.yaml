@@ -1,0 +1,53 @@
+id: review
+version: 1.0.0
+owner: ai-platform-team
+description: Analyzes diffs and reports findings; never approves.
+framework:
+  name: factory-native
+  version: 0.1.0
+  alternative_spike: langgraph
+runtime:
+  python: '3.12'
+  worker_type: agent-worker
+skills:
+- name: threat-analysis
+  version: 1.0.0
+model:
+  deployment: offline-deterministic-v1
+  purpose: delivery.review
+tools:
+- review:create_item@retail/*
+state_schema:
+  type: object
+  properties:
+    task:
+      type: object
+    result:
+      type: object
+memory_policy:
+  transient: per-task, cleared at completion
+  persistent: none
+budgets:
+  max_model_tokens: 60000
+  max_tool_calls: 20
+  max_cost_usd: 2.0
+termination:
+  on_ambiguity: blocked
+  on_budget: stop_and_escalate
+  max_repairs: 1
+evaluation_suite: evals/delivery-agents.yaml
+deployment_class: delivery
+prompt:
+  id: review
+  version: 1.0.0
+task_kind: review.diff
+payload_schema:
+  type: object
+  required:
+  - findings
+  - advisory
+  properties:
+    findings:
+      type: array
+    advisory:
+      const: true

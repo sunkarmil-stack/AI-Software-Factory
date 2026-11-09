@@ -1,0 +1,33 @@
+name: requirements-refinement
+version: 1.0.0
+owner: ai-platform-team
+description: Refine business intent into testable requirements in the normalized spec
+  contract.
+compatibility:
+  factory: '>=0.1'
+  agents: any delivery agent
+inputs:
+- opportunity brief or draft spec
+outputs:
+- gap list
+- clarification questions
+- EARS-style requirement drafts
+requested_capabilities:
+- spec.read
+- spec.comment
+data_classes:
+- internal
+- confidential
+side_effects: none
+network: false
+limitations:
+- Cannot accept requirements on behalf of the product owner.
+- Does not infer data classification.
+risk: low
+tests:
+- name: structure
+  expect_sections:
+  - '## Inputs'
+  - '## Outputs'
+  - '## Procedure'
+  - '## Limitations'

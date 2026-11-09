@@ -1,0 +1,141 @@
+spec_id: SPEC-ACCOUNTS-API
+version: 1
+title: Accounts API
+project: accounts
+owner: po.priya
+risk_tier: 2
+business_outcomes:
+  - id: BO-1
+    statement: Retail channels can read account balances and place holds through one governed API
+    measure: Branch tooling integration lead time reduced from 6 weeks baseline to under 2 weeks
+actors:
+  - {name: Channel application, description: Authenticated retail channel calling on behalf of a customer}
+  - {name: Operations analyst, description: Internal user placing holds on accounts}
+scope:
+  in: [read single account, list tenant accounts, place hold on account]
+  out: [money movement, account opening, cross-tenant reporting]
+preconditions:
+  - Caller identity and scopes are validated by the enterprise API gateway and forwarded as claims
+  - Accounts exist in the system of record (synthetic data in nonproduction)
+flows:
+  normal:
+    - Caller requests an account by id within its tenant and receives balance and currency
+    - Caller lists accounts in its tenant
+    - Analyst places a hold with an amount and reason and receives the created hold
+  exception:
+    - Missing scope returns 403 without revealing data
+    - Account in another tenant returns 404 so existence is not leaked
+    - Invalid hold amount returns 400
+contracts:
+  - id: CON-ACCOUNTS
+    kind: openapi
+    version: 1
+    endpoints:
+      - {operation_id: getAccount, method: GET, path: "/accounts/{account_id}", kind: get, required_scope: "accounts:read",
+         responses: {"200": account, "401": unauthenticated, "403": forbidden, "404": not found}}
+      - {operation_id: listAccounts, method: GET, path: /accounts, kind: list, required_scope: "accounts:read",
+         responses: {"200": account list, "403": forbidden}}
+      - operation_id: createHold
+        method: POST
+        path: "/accounts/{account_id}/holds"
+        kind: create_child
+        child_kind: holds
+        required_scope: "accounts:write"
+        request_schema:
+          type: object
+          required: [amount_cents, reason]
+          properties:
+            amount_cents: {type: integer, minimum: 1, maximum: 100000000}
+            reason: {type: string}
+            idempotency_key: {type: string}
+        responses: {"201": hold created, "400": invalid, "403": forbidden, "404": not found}
+nfrs:
+  - {id: NFR-1, statement: p95 latency for reads under 200 ms at reference load, measure: p95 < 200ms}
+  - {id: NFR-2, statement: No customer identifiers in general telemetry, measure: redaction test passes}
+data_classification:
+  level: confidential
+  fields: {balance_cents: confidential, owner: confidential, id: internal}
+exclusions: [Production data is never used in delivery sandboxes]
+requirements:
+  - id: REQ-1
+    name: Read account
+    statement: The service SHALL return an account in the caller's tenant to a caller holding accounts:read.
+    outcome: BO-1
+    decisions: [ADR-1]
+    acceptance_criteria:
+      - id: AC-1
+        given: a caller in tenant retail with scope accounts:read
+        when: it requests account acc-100
+        then: the account is returned with status 200
+        check:
+          request: {method: GET, path: /accounts/acc-100, headers: {X-Principal: chan-1, X-Tenant: retail, X-Scopes: "accounts:read"}}
+          expect: {status: 200, body_contains: {id: acc-100, currency: CAD}}
+  - id: REQ-2
+    name: Read authorization
+    statement: The service SHALL deny account reads with 403 when the caller lacks accounts:read.
+    outcome: BO-1
+    decisions: [ADR-1]
+    acceptance_criteria:
+      - id: AC-2
+        given: a caller in tenant retail without accounts:read
+        when: it requests account acc-100
+        then: the request is denied with 403
+        check:
+          request: {method: GET, path: /accounts/acc-100, headers: {X-Principal: chan-1, X-Tenant: retail, X-Scopes: "accounts:write"}}
+          expect: {status: 403}
+  - id: REQ-3
+    name: Tenant isolation
+    statement: The service SHALL return 404 for accounts outside the caller's tenant.
+    outcome: BO-1
+    acceptance_criteria:
+      - id: AC-3
+        given: a caller in tenant retail with accounts:read
+        when: it requests account acc-900 owned by tenant wealth
+        then: 404 is returned and no account data is disclosed
+        check:
+          request: {method: GET, path: /accounts/acc-900, headers: {X-Principal: chan-1, X-Tenant: retail, X-Scopes: "accounts:read"}}
+          expect: {status: 404, body_excludes: [balance_cents]}
+      - id: AC-4
+        given: a caller in tenant retail with accounts:read
+        when: it lists accounts
+        then: only the two retail accounts are returned
+        check:
+          request: {method: GET, path: /accounts, headers: {X-Principal: chan-1, X-Tenant: retail, X-Scopes: "accounts:read"}}
+          expect: {status: 200, items_len: 2}
+  - id: REQ-4
+    name: Place hold
+    statement: The service SHALL create a hold with a positive integer amount for callers holding accounts:write.
+    outcome: BO-1
+    acceptance_criteria:
+      - id: AC-5
+        given: an analyst in tenant retail with accounts:write
+        when: it places a hold of 500 cents on acc-100
+        then: the hold is created with status 201
+        check:
+          request: {method: POST, path: /accounts/acc-100/holds, headers: {X-Principal: ops-1, X-Tenant: retail, X-Scopes: "accounts:write"}, body: {amount_cents: 500, reason: fraud review}}
+          expect: {status: 201, body_contains: {amount_cents: 500, parent: acc-100}}
+      - id: AC-6
+        given: an analyst with accounts:write
+        when: it places a hold with amount 0
+        then: the request is rejected with 400
+        check:
+          request: {method: POST, path: /accounts/acc-100/holds, headers: {X-Principal: ops-1, X-Tenant: retail, X-Scopes: "accounts:write"}, body: {amount_cents: 0, reason: test}}
+          expect: {status: 400}
+decisions:
+  - id: ADR-1
+    context: Object-level authorization for account reads
+    options: [gateway-only scope checks, service-enforced scope plus tenant filter]
+    decision: Service enforces scope and tenant on every handler; gateway validates tokens only
+    consequences: Every handler must call require_scope; SAST rule enforces it
+    evidence: [threat model TM-1 spoofing and elevation scenarios]
+    revisit_triggers: [introduction of fine-grained entitlements service]
+    status: approved
+dependencies: [enterprise API gateway claim forwarding]
+assumptions:
+  - {id: ASM-1, statement: Gateway forwards X-Principal, X-Tenant, X-Scopes claims, status: validated}
+permitted_agent_actions: [repo.branch, repo.commit, repo.open_pr, sandbox.run_tests, review.create_item]
+release_requirements:
+  environments: [nonprod, prod]
+  rollback: redeploy previous approved digest; no data migration in this change
+history:
+  - {version: 1, change: initial baseline}

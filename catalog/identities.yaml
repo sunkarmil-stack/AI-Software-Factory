@@ -1,0 +1,189 @@
+principals:
+- id: po.priya
+  kind: human
+  roles:
+  - product_owner
+  tenants:
+  - retail
+  token: dev-po.priya
+- id: arch.alex
+  kind: human
+  roles:
+  - architect
+  tenants:
+  - retail
+  token: dev-arch.alex
+- id: eng.erin
+  kind: human
+  roles:
+  - engineer
+  tenants:
+  - retail
+  token: dev-eng.erin
+- id: eng.eli
+  kind: human
+  roles:
+  - engineer
+  tenants:
+  - retail
+  token: dev-eng.eli
+- id: qa.quinn
+  kind: human
+  roles:
+  - qa_owner
+  tenants:
+  - retail
+  token: dev-qa.quinn
+- id: sec.sam
+  kind: human
+  roles:
+  - security
+  tenants:
+  - retail
+  token: dev-sec.sam
+- id: rel.rita
+  kind: human
+  roles:
+  - release_owner
+  tenants:
+  - retail
+  token: dev-rel.rita
+- id: rel.ravi
+  kind: human
+  roles:
+  - release_owner
+  tenants:
+  - retail
+  token: dev-rel.ravi
+- id: ops.omar
+  kind: human
+  roles:
+  - operator
+  tenants:
+  - retail
+  token: dev-ops.omar
+- id: aud.ada
+  kind: human
+  roles:
+  - auditor
+  tenants:
+  - retail
+  token: dev-aud.ada
+- id: admin.pat
+  kind: human
+  roles:
+  - platform_admin
+  - operator
+  tenants:
+  - '*'
+  token: dev-admin.pat
+- id: po.paula
+  kind: human
+  roles:
+  - product_owner
+  - engineer
+  tenants:
+  - retail
+  token: dev-po.paula
+- id: agent:specification
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+- id: agent:architecture
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - review:create_item@retail/*
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+- id: agent:planning
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+- id: agent:implementation
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - repo:push@retail/*
+  - repo:open_pr@retail/*
+  - sandbox:run_tests@retail/*
+  - deploy:request@retail/*
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+- id: agent:test
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - sandbox:run_tests@retail/*
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+- id: agent:review
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - review:create_item@retail/*
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+- id: agent:release-advisor
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+- id: agent:ops-triage
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - review:create_item@*
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+- id: agent:rag-assistant
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - kb:search@retail/*
+  - review_queue:submit@retail/*
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+- id: ci-builder
+  kind: workload
+  tenants:
+  - '*'
+  grants:
+  - sandbox:*@*
+  - model:invoke@*
+- id: release-service
+  kind: workload
+  tenants:
+  - '*'
+  grants:
+  - deploy:*@*
+  - secrets:read@*
+- id: repo-service
+  kind: workload
+  tenants:
+  - '*'
+  grants:
+  - repo:*@*

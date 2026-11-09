@@ -1,0 +1,30 @@
+name: api-contract-design
+version: 1.0.0
+owner: ai-platform-team
+description: Design versioned OpenAPI contracts for FastAPI services, with explicit
+  scopes and error codes.
+compatibility:
+  factory: '>=0.1'
+  agents: any delivery agent
+inputs:
+- requirements
+- data classification
+outputs:
+- contract endpoints with operation ids, scopes, responses
+requested_capabilities:
+- spec.read
+data_classes:
+- internal
+- confidential
+side_effects: none
+network: false
+limitations:
+- gRPC contracts are produced only where an ADR selects gRPC.
+risk: low
+tests:
+- name: structure
+  expect_sections:
+  - '## Inputs'
+  - '## Outputs'
+  - '## Procedure'
+  - '## Limitations'

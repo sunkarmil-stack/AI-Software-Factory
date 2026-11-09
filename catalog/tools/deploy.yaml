@@ -1,0 +1,57 @@
+name: deploy
+version: 1.0.0
+owner: ai-platform-team
+actions:
+  request:
+    side_effect: write
+    input_schema:
+      type: object
+      required:
+      - release_id
+      - env
+      properties:
+        release_id: &id001
+          type: string
+        env: *id001
+    output_schema:
+      type: object
+      required:
+      - request_id
+      - status
+      properties: {}
+    reversible: true
+  execute:
+    side_effect: write
+    input_schema:
+      type: object
+      required:
+      - release_id
+      - env
+      properties:
+        release_id: *id001
+        env: *id001
+    output_schema:
+      type: object
+      required:
+      - status
+      properties: {}
+    reversible: false
+resource_scope: '{tenant}/{project}'
+data_classes:
+- internal
+authentication: workload-identity
+authorization: identity grant + tenant + resource + policy tier
+timeout_s: 30
+retry:
+  max: 0
+  retry_on:
+  - timeout
+  - '429'
+  - '503'
+idempotency:
+  required: true
+  key: operation id bound to payload digest
+max_concurrency: 4
+circuit:
+  threshold: 3
+  cooldown_s: 10
