@@ -1,0 +1,26 @@
+# Factory runtime state (SQLite DB, evidence ledger, sandboxes, and the Ed25519 signing keys in .factory-home/keys)
+.factory-home/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Secrets / local config
+.env
+.env.*
+*.pem
+*.key
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
