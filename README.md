@@ -26,7 +26,10 @@ factory pins, signs and records every version a run used.
 | Identities, roles, grants, tenants | `catalog/identities.yaml` | Editing principals and grants | No |
 | Capabilities skills may request | `catalog/capabilities.yaml` | Editing the list | No |
 | Build standards (approved base images, protected paths) | `catalog/build-standards.yaml` | Editing the standards | No |
+<<<<<<< HEAD
 | Business ontology (concepts, attributes, relations, synonyms, business rules, actions) | `catalog/ontology/seed.yaml` + governed proposals | Ontology Studio (`/ontology`), API or CLI; discovery proposes changes automatically | No |
+=======
+>>>>>>> 0bd01f492ebf87ee99ec46366eaaa1f6c5a22b40
 | Project setup (owners, risk tier, budget, template, skills) | `Factory.onboard()` / `POST /v1/projects` | API call | No |
 | Runtime limits (time, attempts, tokens, cost, tool calls, fan-out) | per run (`limits`) and per agent manifest (`budgets`) | Request parameter or manifest | No |
 | Runtime environment | env vars `FACTORY_HOME`, `FACTORY_SANDBOX`, `FACTORY_ALLOW_DEV_ISOLATION` | Environment | No |
@@ -77,6 +80,7 @@ Extension never bypasses governance: new agents get grants only from `identities
 skills pass scanning and review, and every new tool or model sits behind the same gateways,
 policy, approvals and evidence.
 
+<<<<<<< HEAD
 ### Dynamic ontology: automatically discovered, human-governed
 
 The factory keeps a versioned business ontology: concepts (attributes, relations, synonyms, data
@@ -92,6 +96,8 @@ marks dependent specs, releases and approvals stale. It's managed in **Ontology 
 
 ![Ontology Studio](docs/screenshots/ontology-review-queue.png)
 
+=======
+>>>>>>> 0bd01f492ebf87ee99ec46366eaaa1f6c5a22b40
 ---
 
 ## Architecture
@@ -106,7 +112,10 @@ flowchart TB
         API["REST API<br/>factory/api.py"]
         CLI["CLI<br/>factory/cli.py"]
         DASH["Ops dashboard<br/>/dashboard"]
+<<<<<<< HEAD
         OSTU["Ontology Studio<br/>/ontology"]
+=======
+>>>>>>> 0bd01f492ebf87ee99ec46366eaaa1f6c5a22b40
     end
 
     subgraph CP["Control plane"]
@@ -116,12 +125,19 @@ flowchart TB
         SKR["Skill registry<br/>signed, pinned"]
         EVD["Evidence ledger<br/>hash-chained"]
         CTL["Kill switch /<br/>controls"]
+<<<<<<< HEAD
         ONT["Ontology registry<br/>discovered, governed"]
+=======
+>>>>>>> 0bd01f492ebf87ee99ec46366eaaa1f6c5a22b40
     end
 
     subgraph DE["Delivery execution"]
         ORC["Durable orchestrator<br/>leases, limits, checkpoints"]
+<<<<<<< HEAD
         AG["Agent runtime<br/>10 roles, 1 worker type"]
+=======
+        AG["Agent runtime<br/>9 roles, 1 worker type"]
+>>>>>>> 0bd01f492ebf87ee99ec46366eaaa1f6c5a22b40
         SBX["Sandboxes"]
         REPO["Git repo<br/>protected branches"]
     end
@@ -166,7 +182,10 @@ flowchart TB
     CTL -. enforced in .-> TGW
     CTL -. enforced in .-> MGW
     APR -. required by .-> REL
+<<<<<<< HEAD
     ONT -. checks .-> SPEC
+=======
+>>>>>>> 0bd01f492ebf87ee99ec46366eaaa1f6c5a22b40
     CP --> EVD
     DE --> EVD
     TB2 --> EVD
