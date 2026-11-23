@@ -159,6 +159,8 @@ def create_app(f: Factory | None = None) -> Starlette:
         Route("/v1/review-items", guard(reviews)),
         Route("/v1/metrics", guard(metrics)),
     ]
+    from .ontology.api import routes as ontology_routes
+    routes += ontology_routes(f, guard)
     app = Starlette(routes=routes)
     app.state.factory = f
     return app

@@ -83,3 +83,10 @@ Tests: `TA` = tests/test_acceptance_scenarios.py, `TC` = tests/test_controls.py,
 ## Acceptance scenarios
 
 ACC 01–09: `tests/test_acceptance_scenarios.py` (all passing). ACC 10: automated portion in `TO test_second_team_golden_path`; the human exercise is described in `docs/golden-path.md`.
+
+## Additions beyond the requirements baseline
+
+| Capability | Status | Implementation | Tests |
+|---|---|---|---|
+| Dynamic governed ontology (automatic discovery, tiered approval, impact/staleness, spec checks, RDF export, Ontology Studio UI) | Done | `factory/ontology/` | `tests/test_ontology.py` (11 tests) |
+| Ontology business rules and actions (safe rule engine, governed action execution, rule-driven approvals, tool binding) | Done | `factory/ontology/rules.py`, `actions.py` | `tests/test_ontology_rules_actions.py` (13 tests) |

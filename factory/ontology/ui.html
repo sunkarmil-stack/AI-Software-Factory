@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ontology Studio — AI Software Factory</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #1c2430; --muted: #5d6b7a; --line: #e2e6eb;
+    --accent: #1f5fbf; --accent-soft: #e8f0fc; --ok: #1d7a46; --ok-soft: #e5f4ec;
+    --warn: #9a6200; --warn-soft: #fdf3e1; --bad: #b42318; --bad-soft: #fdecea;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--bg); }
+  header { display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: #13233a; color: #fff; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+  header .sub { color: #a9b8cc; font-size: 12px; }
+  header .spacer { flex: 1; }
+  header select { padding: 5px 8px; border-radius: 6px; border: 1px solid #3b5272; background: #1d3352; color: #fff; }
+  header .roles { font-size: 12px; color: #cfdaea; }
+  .dev { font-size: 11px; background: #fbbf24; color: #3b2a00; padding: 2px 6px; border-radius: 4px; }
+  main { display: grid; grid-template-columns: 200px 1fr; min-height: calc(100vh - 52px); }
+  nav { background: var(--panel); border-right: 1px solid var(--line); padding: 12px 8px; }
+  nav button { display: flex; justify-content: space-between; width: 100%; text-align: left; padding: 8px 10px; margin: 2px 0;
+    border: 0; border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer; font-size: 14px; }
+  nav button.active, nav button:hover { background: var(--accent-soft); color: var(--accent); }
+  .count { background: var(--accent); color: #fff; border-radius: 10px; padding: 0 7px; font-size: 12px; }
+  section.view { display: none; padding: 20px 24px; }
+  section.view.active { display: block; }
+  h2 { font-size: 18px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 16px; }
+  .grid2 { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 16px; align-items: start; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+  tr.clickable { cursor: pointer; } tr.clickable:hover { background: var(--accent-soft); }
+  tr.sel { background: var(--accent-soft); }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 12px; border: 1px solid transparent; }
+  .dc-public { background: #eef2f6; color: #334155; } .dc-internal { background: var(--accent-soft); color: var(--accent); }
+  .dc-confidential { background: var(--warn-soft); color: var(--warn); } .dc-restricted { background: var(--bad-soft); color: var(--bad); }
+  .st-pending { background: var(--warn-soft); color: var(--warn); } .st-accepted, .st-auto_accepted, .st-active { background: var(--ok-soft); color: var(--ok); }
+  .st-rejected, .st-invalid, .st-deprecated { background: var(--bad-soft); color: var(--bad); }
+  .tier { background: #eef2f6; color: #334155; }
+  .muted { color: var(--muted); } .mono { font-family: var(--mono); font-size: 12px; }
+  .chips span { display: inline-block; margin: 2px 4px 2px 0; padding: 1px 8px; background: #eef2f6; border-radius: 10px; font-size: 12px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  input, select.f, textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
+  textarea { min-height: 90px; font-family: var(--mono); font-size: 12px; }
+  button.btn { padding: 7px 12px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; font-size: 13px; }
+  button.btn.secondary { background: #fff; color: var(--accent); }
+  button.btn.danger { background: #fff; color: var(--bad); border-color: var(--bad); }
+  button.btn:disabled { opacity: .45; cursor: not-allowed; }
+  .msg { margin-top: 10px; padding: 8px 10px; border-radius: 6px; display: none; white-space: pre-wrap; }
+  .msg.ok { display: block; background: var(--ok-soft); color: var(--ok); } .msg.err { display: block; background: var(--bad-soft); color: var(--bad); }
+  .findings li { margin: 4px 0; } .sev-error { color: var(--bad); } .sev-warning { color: var(--warn); } .sev-info { color: var(--muted); }
+  pre { background: #0f1720; color: #dfe7f1; padding: 12px; border-radius: 8px; overflow: auto; max-height: 520px; font-size: 12px; }
+  svg text { font: 12px system-ui, sans-serif; }
+  .empty { color: var(--muted); padding: 20px; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Ontology Studio</h1><div class="sub">AI Software Factory · governed business ontology</div></div>
+  <span class="spacer"></span>
+  <span class="dev" title="Dev tokens from catalog/identities.yaml. Production uses Entra ID SSO.">DEV SIGN-IN</span>
+  <select id="user" aria-label="Signed-in user"></select>
+  <span class="roles" id="roles"></span>
+</header>
+<main>
+  <nav>
+    <button data-v="concepts" class="active">Concepts</button>
+    <button data-v="graph">Graph</button>
+    <button data-v="proposals">Review queue <span class="count" id="pcount">0</span></button>
+    <button data-v="actions">Actions &amp; rules <span class="count" id="acount">0</span></button>
+    <button data-v="propose">Propose change</button>
+    <button data-v="discover">Discover from spec</button>
+    <button data-v="check">Check a spec</button>
+    <button data-v="export">Export (RDF/OWL)</button>
+  </nav>
+  <div>
+    <section class="view active" id="v-concepts">
+      <h2>Concepts</h2><p class="lead">Approved, versioned business concepts. Select one to see attributes, relations, history and impact.</p>
+      <div class="grid2">
+        <div class="card"><table><thead><tr><th>Concept</th><th>Data class</th><th>v</th></tr></thead><tbody id="clist"></tbody></table></div>
+        <div id="cdetail"><div class="card empty">Select a concept</div></div>
+      </div>
+    </section>
+
+    <section class="view" id="v-graph">
+      <h2>Concept graph</h2><p class="lead">Relations between approved concepts. Border colour shows data class:
+        <span class="badge dc-public">public</span> <span class="badge dc-internal">internal</span>
+        <span class="badge dc-confidential">confidential</span> <span class="badge dc-restricted">restricted</span>. Click a concept to open it.</p>
+      <div class="card"><svg id="gsvg" width="100%" height="520" viewBox="0 0 900 520"></svg></div>
+    </section>
+
+    <section class="view" id="v-proposals">
+      <h2>Review queue</h2>
+      <p class="lead">Agent and human proposals. Tier 1 changes (synonyms) apply automatically after validation; others need the listed roles. Proposers cannot approve their own changes.</p>
+      <div class="row" style="margin-bottom:10px">
+        <select class="f" id="pfilter" style="width:200px">
+          <option value="pending">Pending</option><option value="">All</option><option value="accepted">Accepted</option>
+          <option value="auto_accepted">Auto-accepted</option><option value="rejected">Rejected</option><option value="invalid">Invalid</option>
+        </select>
+      </div>
+      <div id="plist"></div>
+    </section>
+
+    <section class="view" id="v-actions">
+      <h2>Actions &amp; business rules</h2>
+      <p class="lead">Actions are the only governed way to change business objects. Running one checks your role, evaluates the
+        business rules, asks for approval when a rule requires it, then calls the bound system through the tool gateway.</p>
+      <div class="grid2">
+        <div>
+          <div class="card">
+            <b>Run an action</b>
+            <label>Action</label><select class="f" id="aname"></select>
+            <div class="muted mono" id="adesc" style="margin-top:4px"></div>
+            <label>Subject (the object the action is performed on)</label><textarea id="asubj" style="min-height:60px">{"id": "acc-100", "tenant": "retail"}</textarea>
+            <label>Parameters</label><textarea id="aparams" style="min-height:70px"></textarea>
+            <label>Environment</label><select class="f" id="aenv"><option>nonprod</option><option>prod</option></select>
+            <div class="row" style="margin-top:12px"><button class="btn" id="arun">Run action</button></div>
+            <div id="ares"></div>
+          </div>
+          <div class="card">
+            <b>Rule tester</b> <span class="muted">— try an expression against sample data (safe evaluator, no code execution)</span>
+            <label>Expression</label><input id="rexpr" class="mono" value="amount_cents >= 1 and amount_cents <= 1000000">
+            <label>Data (JSON)</label><input id="rdata" class="mono" value='{"amount_cents": 2500000}'>
+            <div class="row" style="margin-top:10px"><button class="btn secondary" id="rtest">Evaluate</button> <span id="rres"></span></div>
+          </div>
+        </div>
+        <div>
+          <div class="card"><b>Requests waiting for approval</b> <span class="muted">— raised by require-approval rules; the requester cannot approve their own</span>
+            <div id="areqs" style="margin-top:8px"></div></div>
+          <div class="card"><b>Recent action runs</b><div id="ahist" style="margin-top:8px"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="v-propose">
+      <h2>Propose a change</h2><p class="lead">Every proposal needs provenance. Validation runs immediately; approvals follow the autonomy tier.</p>
+      <div class="card" style="max-width:760px">
+        <label>Change type</label>
+        <select class="f" id="pkind">
+          <option value="add_synonym">Add synonym (tier 1, auto after validation)</option>
+          <option value="add_attribute">Add attribute (tier 2, data owner)</option>
+          <option value="update_definition">Update definition (tier 3, breaking)</option>
+          <option value="add_relation">Add relation (tier 3)</option>
+          <option value="add_concept">Add concept (tier 3)</option>
+          <option value="deprecate_concept">Deprecate concept (tier 3, breaking)</option>
+          <option value="add_rule">Add business rule (tier 3, ontology owner + product owner, breaking)</option>
+          <option value="update_rule">Change business rule (tier 3, breaking)</option>
+          <option value="retire_rule">Retire business rule (tier 3, breaking)</option>
+          <option value="add_action">Add action (tier 3, ontology owner + architect)</option>
+          <option value="retire_action">Retire action (tier 3, breaking)</option>
+        </select>
+        <div id="pfields"></div>
+        <label>Provenance source</label><input id="psrc" placeholder="e.g. policy-portal/holds/v3 or SPEC-ACCOUNTS-API@v1">
+        <label>Evidence (quote from the source)</label><input id="pevid" placeholder="exact sentence that supports this change">
+        <div class="row" style="margin-top:12px"><button class="btn" id="psubmit">Submit proposal</button></div>
+        <div class="msg" id="pmsg"></div>
+      </div>
+    </section>
+
+    <section class="view" id="v-discover">
+      <h2>Discover from a spec</h2>
+      <p class="lead">Extracts candidate concepts, attributes and relations from the spec's contracts and classification, then the ontology agent adds grounded definitions and synonyms from your documents. Results land in the review queue.</p>
+      <div class="card" style="max-width:760px">
+        <label>Specification</label><select class="f" id="dspec"></select>
+        <label>Supporting document id</label><input id="ddocid" value="glossary.md">
+        <label>Document text (glossary, policy extract)</label><textarea id="ddoc" placeholder="Paste glossary text, e.g. 'A hold (also called a freeze) is ...'"></textarea>
+        <div class="row" style="margin-top:12px"><button class="btn" id="dgo">Run discovery</button></div>
+        <div class="msg" id="dmsg"></div>
+      </div>
+    </section>
+
+    <section class="view" id="v-check">
+      <h2>Check a spec against the ontology</h2><p class="lead">Unknown terms, synonyms used instead of canonical names, unknown attributes and data-class conflicts. Errors block Pipeline A.</p>
+      <div class="card" style="max-width:760px">
+        <label>Specification</label><select class="f" id="cspec"></select>
+        <div class="row" style="margin-top:12px"><button class="btn" id="cgo">Check</button></div>
+        <ul class="findings" id="cres"></ul>
+      </div>
+    </section>
+
+    <section class="view" id="v-export">
+      <h2>Export</h2><p class="lead">OWL classes, datatype and object properties, SKOS definitions and alternative labels.</p>
+      <div class="row" style="margin-bottom:10px"><button class="btn secondary" id="xdl">Download .ttl</button></div>
+      <pre id="xout"></pre>
+    </section>
+  </div>
+</main>
+<script>
+const USERS = [
+  ["onto.olivia", "Olivia — ontology owner"], ["arch.alex", "Alex — architect"], ["data.dana", "Dana — data owner"],
+  ["sec.sam", "Sam — security"], ["po.priya", "Priya — product owner"], ["ops.omar", "Omar — operator"],
+  ["ops.sue", "Sue — supervisor"], ["eng.erin", "Erin — engineer"], ["aud.ada", "Ada — auditor"]];
+let me = null;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+const token = () => "dev-" + $("#user").value;
+async function api(path, opts = {}) {
+  const r = await fetch(path, {...opts, headers: {"content-type": "application/json", authorization: "Bearer " + token()}});
+  const ct = r.headers.get("content-type") || "";
+  const body = ct.includes("json") ? await r.json() : await r.text();
+  if (!r.ok) throw new Error(body.error || body || r.statusText);
+  return body;
+}
+const dc = (c) => `<span class="badge dc-${esc(c)}">${esc(c)}</span>`;
+const sev = (r) => `<span class="badge ${r.severity === "block" ? "dc-restricted" : r.severity === "warn" ? "dc-public" : "dc-confidential"}">${esc(r.severity.replace("_", " "))}${r.approval_role ? ": " + esc(r.approval_role) : ""}</span>`;
+const st = (s) => `<span class="badge st-${esc(s)}">${esc(s.replace("_", " "))}</span>`;
+function show(el, ok, text) { el.className = "msg " + (ok ? "ok" : "err"); el.textContent = text; }
+
+// ---------------- navigation & identity
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("active", x === b));
+  document.querySelectorAll("section.view").forEach(v => v.classList.toggle("active", v.id === "v-" + b.dataset.v));
+  ({concepts: loadConcepts, graph: loadGraph, proposals: loadProposals, discover: loadSpecs, check: loadSpecs, export: loadExport, actions: loadActions})[b.dataset.v]?.();
+});
+USERS.forEach(([id, label]) => $("#user").insertAdjacentHTML("beforeend", `<option value="${id}">${esc(label)}</option>`));
+$("#user").onchange = refreshAll;
+async function refreshAll() {
+  me = await api("/v1/whoami");
+  $("#roles").textContent = "roles: " + (me.roles.join(", ") || "none");
+  await Promise.all([loadConcepts(), loadProposals(), loadActionCount()]);
+}
+
+// ---------------- concepts
+let selected = null;
+async function loadConcepts() {
+  const cs = await api("/v1/ontology/concepts?all=1");
+  $("#clist").innerHTML = cs.map(c => `<tr class="clickable ${c.name === selected ? "sel" : ""}" data-n="${esc(c.name)}">
+    <td><b>${esc(c.name)}</b>${c.status !== "active" ? " " + st(c.status) : ""}<div class="muted">${esc((c.synonyms || []).join(", "))}</div></td>
+    <td>${dc(c.data_class)}</td><td>${c.version}</td></tr>`).join("") || `<tr><td colspan="3" class="empty">No concepts yet</td></tr>`;
+  document.querySelectorAll("#clist tr[data-n]").forEach(tr => tr.onclick = () => openConcept(tr.dataset.n));
+  if (selected) openConcept(selected);
+}
+async function openConcept(name) {
+  selected = name;
+  document.querySelectorAll("#clist tr").forEach(tr => tr.classList.toggle("sel", tr.dataset.n === name));
+  const d = await api("/v1/ontology/concepts/" + encodeURIComponent(name));
+  const c = d.concept, deps = d.impact.dependents || {};
+  $("#cdetail").innerHTML = `
+    <div class="card">
+      <div class="row"><h2 style="margin:0">${esc(c.name)}</h2> ${dc(c.data_class)} ${st(c.status)} <span class="muted">v${c.version} · owner ${esc(c.owner || "—")}</span></div>
+      <p>${esc(c.definition)}</p>
+      <div class="chips">${(c.synonyms || []).map(s => `<span>${esc(s)}</span>`).join("") || '<span class="muted">no synonyms</span>'}</div>
+      ${c.standard_ref ? `<p class="mono">standard: ${esc(c.standard_ref)}</p>` : ""}
+      <div class="row" style="margin-top:10px">
+        <button class="btn secondary" data-k="add_synonym">Add synonym</button>
+        <button class="btn secondary" data-k="add_attribute">Add attribute</button>
+        <button class="btn secondary" data-k="add_relation">Add relation</button>
+        <button class="btn secondary" data-k="update_definition">Change definition</button>
+        <button class="btn secondary" data-k="add_rule">Add rule</button>
+        <button class="btn secondary" data-k="add_action">Add action</button>
+        <button class="btn danger" data-k="deprecate_concept">Deprecate</button>
+      </div>
+    </div>
+    <div class="card"><b>Business rules</b> <span class="muted">— evaluated deterministically whenever an action touches ${esc(c.name)}</span>
+      <table><thead><tr><th>Rule</th><th>Expression</th><th>Severity</th><th></th></tr></thead><tbody>
+      ${(c.rules || []).map(r => `<tr><td><b class="mono">${esc(r.id)}</b><div class="muted">${esc(r.name)}</div><div class="muted">${esc(r.message)}</div></td>
+        <td class="mono">${esc(r.expression)}</td>
+        <td>${sev(r)}${r.status === "retired" ? " " + st("retired") : ""}</td>
+        <td>${r.status === "retired" ? "" : `<button class="btn secondary" data-ru="${esc(r.id)}">Change</button> <button class="btn danger" data-rr="${esc(r.id)}">Retire</button>`}</td></tr>`).join("")
+        || '<tr><td colspan="4" class="muted">no rules</td></tr>'}
+      </tbody></table></div>
+    <div class="card"><b>Actions</b> <span class="muted">— governed operations on ${esc(c.name)}</span>
+      <table><thead><tr><th>Action</th><th>Parameters</th><th>Effect</th><th></th></tr></thead><tbody>
+      ${(c.actions || []).map(a => `<tr><td><b>${esc(a.name)}</b>${a.status === "retired" ? " " + st("retired") : ""}<div class="muted">${esc(a.description)}</div>
+          <div class="muted">roles: ${(a.allowed_roles || []).map(esc).join(", ") || "agents with grant only"}</div></td>
+        <td class="mono">${(a.parameters || []).map(x => esc(x.name) + ":" + esc(x.type) + (x.required ? "*" : "")).join("<br>")}</td>
+        <td>${a.creates ? "creates " + esc(a.creates) + "<br>" : ""}${esc(a.side_effect)}${a.reversible ? "" : ", irreversible"}
+          ${a.tool ? `<div class="mono muted">tool ${esc(a.tool.name)}.${esc(a.tool.action)}</div>` : ""}
+          ${(a.preconditions || []).length ? `<div class="muted">pre: ${a.preconditions.map(esc).join(", ")}</div>` : ""}</td>
+        <td>${a.status === "retired" ? "" : `<button class="btn" data-run="${esc(a.name)}">Run</button> <button class="btn danger" data-ar="${esc(a.name)}">Retire</button>`}</td></tr>`).join("")
+        || ((d.impact.created_by_actions || []).length ? "" : '<tr><td colspan="4" class="muted">no actions</td></tr>')}
+      ${(d.impact.created_by_actions || []).map(n => `<tr><td colspan="3" class="muted">${esc(n)} (defined on another concept) creates ${esc(c.name)}</td><td><button class="btn secondary" data-run="${esc(n)}">Run</button></td></tr>`).join("")}
+      </tbody></table></div>
+    <div class="card"><b>Attributes</b><table><thead><tr><th>Name</th><th>Type</th><th>Data class</th><th>Required</th></tr></thead><tbody>
+      ${(c.attributes || []).map(a => `<tr><td class="mono">${esc(a.name)}</td><td>${esc(a.type)}</td><td>${dc(a.data_class)}</td><td>${a.required ? "yes" : ""}</td></tr>`).join("") || '<tr><td colspan="4" class="muted">none</td></tr>'}
+    </tbody></table></div>
+    <div class="card"><b>Relations</b><table><tbody>
+      ${(c.relations || []).map(r => `<tr><td class="mono">${esc(c.name)} —${esc(r.type)}→ ${esc(r.target)}</td><td>${esc(r.cardinality)}</td></tr>`).join("") || '<tr><td class="muted">none</td></tr>'}
+      ${(d.impact.related_concepts || []).map(n => `<tr><td class="mono muted">${esc(n)} → ${esc(c.name)}</td><td class="muted">incoming</td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="card"><b>Impact</b> <span class="muted">— artifacts that depend on this concept (a breaking change marks them stale)</span>
+      ${Object.keys(deps).length ? Object.entries(deps).map(([k, v]) => `<div style="margin-top:6px"><span class="badge tier">${esc(k)}</span> <span class="mono">${v.map(esc).join(", ")}</span></div>`).join("") : '<div class="muted" style="margin-top:6px">No dependents yet</div>'}
+    </div>
+    <div class="card"><b>History</b><table><thead><tr><th>v</th><th>Status</th><th>By</th><th>Proposal</th><th>When</th></tr></thead><tbody>
+      ${d.history.map(h => `<tr><td>${h.version}</td><td>${st(h.status)}</td><td>${esc(h.created_by)}</td><td class="mono">${esc(h.proposal || "seed")}</td><td>${new Date(h.created * 1000).toLocaleString()}</td></tr>`).join("")}
+    </tbody></table></div>`;
+  $("#cdetail").querySelectorAll("button[data-k]").forEach(b => b.onclick = () => startPropose(b.dataset.k, c.name));
+  $("#cdetail").querySelectorAll("button[data-ru]").forEach(b => b.onclick = () => startPropose("update_rule", c.name, (c.rules || []).find(r => r.id === b.dataset.ru)));
+  $("#cdetail").querySelectorAll("button[data-rr]").forEach(b => b.onclick = () => startPropose("retire_rule", c.name, {id: b.dataset.rr}));
+  $("#cdetail").querySelectorAll("button[data-ar]").forEach(b => b.onclick = () => startPropose("retire_action", c.name, {name: b.dataset.ar}));
+  $("#cdetail").querySelectorAll("button[data-run]").forEach(b => b.onclick = () => openAction(b.dataset.run));
+}
+
+// ---------------- graph
+async function loadGraph() {
+  const g = await api("/v1/ontology/graph"), svg = $("#gsvg");
+  const W = 900, H = 520, cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 80;
+  const pos = {}; g.nodes.forEach((n, i) => { const a = (2 * Math.PI * i) / Math.max(g.nodes.length, 1) - Math.PI / 2; pos[n.id] = [cx + R * Math.cos(a), cy + R * Math.sin(a)]; });
+  // small deterministic force layout: nodes repel, relations pull, so edges cross less
+  for (let it = 0; it < 400; it++) {
+    const f = {}; g.nodes.forEach(n => f[n.id] = [0, 0]);
+    g.nodes.forEach(a => g.nodes.forEach(b => { if (a === b) return;
+      const dx = pos[a.id][0] - pos[b.id][0], dy = pos[a.id][1] - pos[b.id][1], d2 = Math.max(dx * dx + dy * dy, 400);
+      f[a.id][0] += 60000 * dx / d2 / Math.sqrt(d2); f[a.id][1] += 60000 * dy / d2 / Math.sqrt(d2); }));
+    g.edges.forEach(e => { if (!pos[e.source] || !pos[e.target]) return;
+      const dx = pos[e.target][0] - pos[e.source][0], dy = pos[e.target][1] - pos[e.source][1], d = Math.hypot(dx, dy) || 1, k = (d - 220) * 0.02;
+      f[e.source][0] += k * dx / d; f[e.source][1] += k * dy / d; f[e.target][0] -= k * dx / d; f[e.target][1] -= k * dy / d; });
+    g.nodes.forEach(n => { pos[n.id][0] = Math.min(W - 70, Math.max(70, pos[n.id][0] + Math.max(-8, Math.min(8, f[n.id][0] + (cx - pos[n.id][0]) * 0.002))));
+      pos[n.id][1] = Math.min(H - 40, Math.max(40, pos[n.id][1] + Math.max(-8, Math.min(8, f[n.id][1] + (cy - pos[n.id][1]) * 0.002)))); });
+  }
+  const col = {public: "#64748b", internal: "#1f5fbf", confidential: "#b7791f", restricted: "#b42318"};
+  let s = `<defs><marker id="ar" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs>`;
+  g.edges.forEach(e => { const [x1, y1] = pos[e.source] || [0, 0], [x2, y2] = pos[e.target] || [0, 0];
+    const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+    const t = Math.min(52 / Math.max(Math.abs(ux), 1e-6), 20 / Math.max(Math.abs(uy), 1e-6), L / 2 - 2);  // box edge
+    const lx = x1 + dx * 0.45 - uy * 12, ly = y1 + dy * 0.45 + ux * 12;
+    s += `<line x1="${x1 + ux * t}" y1="${y1 + uy * t}" x2="${x2 - ux * (t + 2)}" y2="${y2 - uy * (t + 2)}" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar)"/>
+          <text x="${lx}" y="${ly}" text-anchor="middle" fill="#475569" paint-order="stroke" stroke="#fff" stroke-width="4">${esc(e.type)} (${esc(e.cardinality)})</text>`; });
+  g.nodes.forEach(n => { const [x, y] = pos[n.id];
+    s += `<g style="cursor:pointer" data-n="${esc(n.id)}"><rect x="${x - 52}" y="${y - 20}" width="104" height="40" rx="8" fill="#fff" stroke="${col[n.data_class]}" stroke-width="2"/>
+          <text x="${x}" y="${y + 4}" text-anchor="middle" font-weight="600" fill="#1c2430">${esc(n.id)}</text></g>`; });
+  svg.innerHTML = g.nodes.length ? s : `<text x="450" y="260" text-anchor="middle" fill="#5d6b7a">No concepts yet</text>`;
+  svg.querySelectorAll("g[data-n]").forEach(el => el.onclick = () => { document.querySelector('nav button[data-v="concepts"]').click(); openConcept(el.dataset.n); });
+}
+
+// ---------------- proposals
+$("#pfilter").onchange = loadProposals;
+async function loadProposals() {
+  const pend = await api("/v1/ontology/proposals?status=pending");
+  $("#pcount").textContent = pend.length;
+  const f = $("#pfilter").value;
+  const ps = f === "pending" ? pend : await api("/v1/ontology/proposals" + (f ? "?status=" + f : ""));
+  $("#plist").innerHTML = ps.slice().reverse().map(p => {
+    const mine = me && p.proposer === me.id;
+    const canRoles = (p.roles || []).filter(r => me && me.roles.includes(r));
+    const approveBtns = p.status === "pending" ? canRoles.map(r => `<button class="btn" data-a="${esc(p.id)}" data-r="${esc(r)}" ${mine ? "disabled title='Proposers cannot approve their own change'" : ""}>Approve as ${esc(r)}</button>`).join(" ") : "";
+    const rejectBtn = p.status === "pending" && canRoles.length ? `<button class="btn danger" data-x="${esc(p.id)}">Reject</button>` : "";
+    return `<div class="card">
+      <div class="row"><b>${esc(p.kind.replace("_", " "))}</b> <span class="mono">${esc(p.target)}</span> ${st(p.status)}
+        <span class="badge tier">tier ${p.tier}</span> <span class="muted">by ${esc(p.proposer)} (${esc(p.proposer_kind)})</span></div>
+      <div class="muted" style="margin-top:4px">Required approvals: ${(p.roles || []).map(esc).join(", ") || "none (auto)"} · given: ${(p.approvals || []).length}</div>
+      ${(p.validation || []).length ? `<ul class="findings">${p.validation.map(v => `<li class="sev-error">${esc(v)}</li>`).join("")}</ul>` : ""}
+      <div style="margin-top:6px"><span class="muted">Source:</span> ${esc(p.provenance.source || "")} <div class="mono muted">${esc(p.provenance.evidence || "")}</div></div>
+      <details style="margin-top:6px"><summary class="muted">Payload</summary><pre>${esc(JSON.stringify(p.payload, null, 2))}</pre></details>
+      ${p.reason ? `<div class="muted">Reason: ${esc(p.reason)}</div>` : ""}
+      <div class="row" style="margin-top:8px">${approveBtns} ${rejectBtn}</div>
+      <div class="msg" id="m-${esc(p.id)}"></div></div>`;
+  }).join("") || `<div class="card empty">Nothing here</div>`;
+  document.querySelectorAll("button[data-a]").forEach(b => b.onclick = async () => {
+    try { const r = await api(`/v1/ontology/proposals/${b.dataset.a}/approve`, {method: "POST", body: JSON.stringify({role: b.dataset.r})});
+      show($("#m-" + b.dataset.a), true, r.status === "accepted" ? "All approvals given — change applied." : "Approval recorded; waiting for other roles.");
+      setTimeout(() => { loadProposals(); loadConcepts(); }, 900);
+    } catch (e) { show($("#m-" + b.dataset.a), false, e.message); } });
+  document.querySelectorAll("button[data-x]").forEach(b => b.onclick = async () => {
+    const reason = prompt("Reason for rejecting?"); if (reason === null) return;
+    try { await api(`/v1/ontology/proposals/${b.dataset.x}/reject`, {method: "POST", body: JSON.stringify({reason})}); loadProposals(); }
+    catch (e) { show($("#m-" + b.dataset.x), false, e.message); } });
+}
+
+// ---------------- propose form
+const DC = ["public", "internal", "confidential", "restricted"];
+const opt = (xs, v) => xs.map(x => `<option ${x === v ? "selected" : ""}>${x}</option>`).join("");
+let conceptNames = [];
+let prefill = null;
+function ruleFields(r, locked) {
+  r = r || {};
+  return `<label>Rule id</label><input id="rid" class="mono" value="${esc(r.id || "")}" ${locked ? "readonly" : ""} placeholder="R-HOLD-REASON-LENGTH">
+    <label>Name</label><input id="rname" value="${esc(r.name || "")}">
+    <label>Expression (attributes of the concept; and/or/not, comparisons, in, len())</label><input id="rex" class="mono" value="${esc(r.expression || "")}">
+    <label>Severity</label><select class="f" id="rsev">${opt(["block", "warn", "require_approval"], r.severity)}</select>
+    <label>Approval role (for require_approval)</label><select class="f" id="rrole"><option value=""></option>${opt(["supervisor","release_owner","security","data_owner","product_owner"], r.approval_role)}</select>
+    <label>Message shown when the rule is not met</label><input id="rmsg" value="${esc(r.message || "")}">`;
+}
+async function renderFields(target) {
+  conceptNames = (await api("/v1/ontology/concepts")).map(c => c.name);
+  const k = $("#pkind").value, tsel = `<label>Concept</label><select class="f" id="ptarget">${opt(conceptNames, target)}</select>`;
+  const F = {
+    add_synonym: tsel + `<label>Synonym</label><input id="psyn">`,
+    add_attribute: tsel + `<label>Attribute name (snake_case)</label><input id="pan"><label>Type</label><select class="f" id="pat">${opt(["string","integer","number","boolean","date","datetime","money","identifier","enum"])}</select><label>Data class</label><select class="f" id="padc">${opt(DC, "internal")}</select><label><input type="checkbox" id="pareq" style="width:auto"> Required</label>`,
+    update_definition: tsel + `<label>New definition</label><input id="pdef">`,
+    add_relation: tsel + `<label>Relation type (camelCase)</label><input id="prt" placeholder="e.g. ownedBy"><label>Target concept</label><select class="f" id="prtarget">${opt(conceptNames)}</select><label>Cardinality</label><select class="f" id="prc">${opt(["1","0..1","0..*","1..*"])}</select>`,
+    add_concept: `<label>Concept name (PascalCase)</label><input id="pname"><label>Definition</label><input id="pdef"><label>Data class</label><select class="f" id="pdc">${opt(DC, "internal")}</select><label>Synonyms (comma separated)</label><input id="psyns">`,
+    deprecate_concept: tsel + `<label>Note</label><input id="pnote" placeholder="why, and what replaces it">`,
+    add_rule: tsel + ruleFields(prefill), update_rule: tsel + ruleFields(prefill, true),
+    retire_rule: tsel + `<label>Rule id</label><input id="rrid" class="mono" value="${esc((prefill || {}).id || "")}">`,
+    add_action: tsel + `<label>Action name (PascalCase)</label><input id="aan" placeholder="e.g. ReleaseHold">
+      <label>Description</label><input id="aad">
+      <label>Creates concept (optional)</label><select class="f" id="aac"><option value="">— none —</option>${opt(conceptNames)}</select>
+      <label>Parameters (JSON list)</label><textarea id="aap" style="min-height:60px">[{"name": "reason", "type": "string", "required": true}]</textarea>
+      <label>Preconditions (rule ids, comma separated)</label><input id="aapre" class="mono">
+      <label>Side effect</label><select class="f" id="aase"><option>write</option><option>consequential</option></select>
+      <label><input type="checkbox" id="aarev" checked style="width:auto"> Reversible</label>
+      <label>Allowed human roles (comma separated)</label><input id="aaroles" value="operator, supervisor">
+      <label>Tool binding (optional, tool.action)</label><input id="aatool" class="mono" placeholder="e.g. holds.create">`,
+    retire_action: tsel + `<label>Action name</label><input id="ran" value="${esc((prefill || {}).name || "")}">`,
+  };
+  $("#pfields").innerHTML = F[k];
+}
+$("#pkind").onchange = () => renderFields();
+function startPropose(kind, target, pre) {
+  document.querySelector('nav button[data-v="propose"]').click();
+  prefill = pre || null; $("#pkind").value = kind; renderFields(target); $("#pmsg").className = "msg";
+}
+$("#psubmit").onclick = async () => {
+  const k = $("#pkind").value, v = (id) => ($("#" + id) || {}).value, target = v("ptarget");
+  const payload = {
+    add_synonym: () => ({synonym: v("psyn")}),
+    add_attribute: () => ({attribute: {name: v("pan"), type: v("pat"), data_class: v("padc"), required: $("#pareq").checked}}),
+    update_definition: () => ({definition: v("pdef")}),
+    add_relation: () => ({relation: {type: v("prt"), target: v("prtarget"), cardinality: v("prc")}}),
+    add_concept: () => ({name: v("pname"), definition: v("pdef"), data_class: v("pdc"), attributes: [], relations: [],
+      synonyms: (v("psyns") || "").split(",").map(s => s.trim()).filter(Boolean)}),
+    deprecate_concept: () => ({note: v("pnote")}),
+    add_rule: () => ({rule: ruleBody()}), update_rule: () => ({rule: ruleBody()}),
+    retire_rule: () => ({rule_id: v("rrid")}),
+    add_action: () => { const t = (v("aatool") || "").trim(); return {action: {name: v("aan"), description: v("aad"),
+      ...(v("aac") ? {creates: v("aac")} : {}), parameters: JSON.parse(v("aap") || "[]"),
+      preconditions: (v("aapre") || "").split(",").map(x => x.trim()).filter(Boolean), side_effect: v("aase"),
+      reversible: $("#aarev").checked, allowed_roles: (v("aaroles") || "").split(",").map(x => x.trim()).filter(Boolean),
+      ...(t ? {tool: {name: t.split(".")[0], action: t.split(".")[1]}} : {})}}; },
+    retire_action: () => ({action_name: v("ran")}),
+  }[k]();
+  try {
+    const r = await api("/v1/ontology/proposals/new", {method: "POST", body: JSON.stringify({kind: k, target: k === "add_concept" ? payload.name : target,
+      payload, provenance: {source: v("psrc"), evidence: v("pevid"), method: "manual"}})});
+    show($("#pmsg"), true, r.status === "auto_accepted" ? "Validated and applied automatically (tier 1)." :
+      `Submitted ${r.id} — tier ${r.tier}, needs: ${r.roles.join(", ")}.`);
+    loadProposals(); loadConcepts();
+  } catch (e) { show($("#pmsg"), false, e.message); }
+};
+
+function ruleBody() {
+  const v = (id) => ($("#" + id) || {}).value;
+  return {id: v("rid"), name: v("rname"), expression: v("rex"), severity: v("rsev"),
+          ...(v("rrole") ? {approval_role: v("rrole")} : {}), message: v("rmsg")};
+}
+
+// ---------------- actions & rules
+let actionsCache = [];
+async function loadActionCount() { $("#acount").textContent = (await api("/v1/ontology/action-requests?status=pending")).length; }
+async function loadActions() {
+  actionsCache = await api("/v1/ontology/actions");
+  const cur = $("#aname").value;
+  $("#aname").innerHTML = actionsCache.map(a => `<option ${a.name === cur ? "selected" : ""}>${esc(a.name)}</option>`).join("") || "<option value=''>No actions yet</option>";
+  describeAction();
+  const reqs = await api("/v1/ontology/action-requests");
+  const pend = reqs.filter(r => r.status === "pending" && r.roles.length);
+  $("#acount").textContent = pend.length;
+  $("#areqs").innerHTML = pend.map(r => {
+    const mine = me && r.actor === me.id, can = r.roles.filter(x => me && me.roles.includes(x));
+    return `<div style="border-top:1px solid var(--line);padding:8px 0"><b>${esc(r.action)}</b> on <span class="mono">${esc(r.subject.id || "")}</span>
+      <span class="muted">by ${esc(r.actor)} · ${esc(r.env)}</span><div class="mono">${esc(JSON.stringify(r.params))}</div>
+      <div class="muted">${r.rule_results.filter(x => x.severity === "require_approval" && x.outcome === "fail").map(x => esc(x.message)).join("; ")}</div>
+      <div class="row" style="margin-top:6px">${can.map(role => `<button class="btn" data-q="${esc(r.id)}" data-role="${esc(role)}" ${mine ? "disabled title='Requesters cannot approve their own request'" : ""}>Approve as ${esc(role)}</button>`).join(" ")}
+      ${can.length ? `<button class="btn danger" data-qx="${esc(r.id)}">Reject</button>` : `<span class="muted">needs ${r.roles.map(esc).join(", ")}</span>`}</div>
+      <div class="msg" id="q-${esc(r.id)}"></div></div>`; }).join("") || '<div class="muted">Nothing waiting</div>';
+  $("#ahist").innerHTML = `<table><thead><tr><th>Action</th><th>By</th><th>Status</th><th>Result</th></tr></thead><tbody>${reqs.slice(-8).reverse().map(r =>
+    `<tr><td>${esc(r.action)}</td><td>${esc(r.actor)}</td><td>${st(r.status === "executed" ? "accepted" : r.status)}</td><td class="mono">${esc(r.result ? (r.result.hold_id || r.result.reason || JSON.stringify(r.result)) : "")}</td></tr>`).join("") || '<tr><td colspan="4" class="muted">none yet</td></tr>'}</tbody></table>`;
+  document.querySelectorAll("button[data-q]").forEach(b => b.onclick = async () => {
+    try { const r = await api(`/v1/ontology/action-requests/${b.dataset.q}/approve`, {method: "POST", body: JSON.stringify({role: b.dataset.role})});
+      show($("#q-" + b.dataset.q), true, r.status === "executed" ? "Approved and executed: " + JSON.stringify(r.result) : "Approval recorded"); setTimeout(loadActions, 900);
+    } catch (e) { show($("#q-" + b.dataset.q), false, e.message); } });
+  document.querySelectorAll("button[data-qx]").forEach(b => b.onclick = async () => {
+    const reason = prompt("Reason for rejecting?"); if (reason === null) return;
+    try { await api(`/v1/ontology/action-requests/${b.dataset.qx}/reject`, {method: "POST", body: JSON.stringify({reason})}); loadActions(); }
+    catch (e) { show($("#q-" + b.dataset.qx), false, e.message); } });
+}
+function describeAction() {
+  const a = actionsCache.find(x => x.name === $("#aname").value);
+  if (!a) { $("#adesc").textContent = ""; return; }
+  $("#adesc").textContent = `${a.description} · on ${a.concept}${a.creates ? " → creates " + a.creates : ""} · roles: ${(a.allowed_roles || []).join(", ")}`;
+  const sample = {}; (a.parameters || []).forEach(p => { sample[p.name] = ["integer", "money", "number"].includes(p.type) ? 500 : p.type === "boolean" ? false : "text"; });
+  if (!$("#aparams").dataset.touched) $("#aparams").value = JSON.stringify(sample, null, 1);
+}
+$("#aname").onchange = () => { delete $("#aparams").dataset.touched; describeAction(); };
+$("#aparams").oninput = () => { $("#aparams").dataset.touched = "1"; };
+function openAction(name) { document.querySelector('nav button[data-v="actions"]').click(); setTimeout(() => { $("#aname").value = name; delete $("#aparams").dataset.touched; describeAction(); }, 300); }
+$("#arun").onclick = async () => {
+  try {
+    const r = await api(`/v1/ontology/actions/${encodeURIComponent($("#aname").value)}/execute`, {method: "POST",
+      body: JSON.stringify({subject: JSON.parse($("#asubj").value || "{}"), params: JSON.parse($("#aparams").value || "{}"), env: $("#aenv").value})});
+    const rows = r.rule_results.map(x => `<tr><td><span class="mono">${esc(x.rule)}</span> <span class="muted">(${esc(x.severity.replace("_", " "))})</span>
+      ${x.outcome === "pass" ? "" : `<div class="muted">${esc(x.message)}</div>`}</td>
+      <td><span class="badge ${x.outcome === "pass" ? "st-accepted" : "st-rejected"}">${esc(x.outcome)}</span></td></tr>`).join("");
+    const head = r.status === "executed" ? `<div class="msg ok">Executed. ${esc(JSON.stringify(r.result))}${r.warnings.length ? "\nWarnings: " + r.warnings.map(esc).join("; ") : ""}</div>`
+      : r.status === "pending_approval" ? `<div class="msg err" style="background:var(--warn-soft);color:var(--warn)">Waiting for ${r.roles.map(esc).join(", ")} approval (request ${esc(r.request_id)}). ${r.messages.map(esc).join("; ")}</div>`
+      : `<div class="msg err">Blocked by business rules: ${r.messages.map(esc).join("; ")}</div>`;
+    $("#ares").innerHTML = head + (rows ? `<table style="margin-top:8px"><thead><tr><th>Rule</th><th>Outcome</th></tr></thead><tbody>${rows}</tbody></table>` : "");
+    loadActions();
+  } catch (e) { $("#ares").innerHTML = `<div class="msg err">${esc(e.message)}</div>`; }
+};
+$("#rtest").onclick = async () => {
+  try { const r = await api("/v1/ontology/rules/test", {method: "POST", body: JSON.stringify({expression: $("#rexpr").value, data: JSON.parse($("#rdata").value || "{}")})});
+    $("#rres").innerHTML = r.result === "unknown" ? `<span class="badge dc-confidential">cannot decide: ${esc(r.missing)} missing</span>` : (r.result ? '<span class="badge st-accepted">true — rule met</span>' : '<span class="badge st-rejected">false — rule not met</span>');
+  } catch (e) { $("#rres").innerHTML = `<span class="badge st-rejected">${esc(e.message)}</span>`; }
+};
+
+// ---------------- discover & check
+async function loadSpecs() {
+  const ss = await api("/v1/ontology/specs");
+  const o = ss.map(s => `<option value="${esc(s.spec_id)}|${s.version}">${esc(s.spec_id)} v${s.version} · ${esc(s.project)} · ${esc(s.status)}</option>`).join("") || "<option value=''>No specs submitted yet</option>";
+  $("#dspec").innerHTML = o; $("#cspec").innerHTML = o;
+}
+$("#dgo").onclick = async () => {
+  const [spec_id, version] = $("#dspec").value.split("|");
+  const docs = $("#ddoc").value.trim() ? [{id: $("#ddocid").value || "document", text: $("#ddoc").value}] : [];
+  try {
+    const r = await api("/v1/ontology/discover", {method: "POST", body: JSON.stringify({spec_id, version, documents: docs})});
+    if (r.state !== "SUCCEEDED") throw new Error(r.error || r.state);
+    const ps = r.result.proposals;
+    show($("#dmsg"), true, `${ps.length} proposal(s) created:\n` + ps.map(p => `• ${p.kind} ${p.target} — ${p.status}${p.validation.length ? " (" + p.validation.join("; ") + ")" : ""}`).join("\n") + "\nOpen the review queue to approve.");
+    loadProposals();
+  } catch (e) { show($("#dmsg"), false, e.message); }
+};
+$("#cgo").onclick = async () => {
+  const [spec_id, version] = $("#cspec").value.split("|");
+  try {
+    const fs = await api("/v1/ontology/check-spec", {method: "POST", body: JSON.stringify({spec_id, version})});
+    $("#cres").innerHTML = fs.map(x => `<li class="sev-${esc(x.severity)}"><b>${esc(x.severity)}</b> <span class="mono">${esc(x.term)}</span> ${x.ref ? "(" + esc(x.ref) + ")" : ""} — ${esc(x.finding)}</li>`).join("") || "<li class='sev-info'>No findings: the spec is consistent with the ontology.</li>";
+  } catch (e) { $("#cres").innerHTML = `<li class="sev-error">${esc(e.message)}</li>`; }
+};
+
+// ---------------- export
+async function loadExport() { $("#xout").textContent = await api("/v1/ontology/export.ttl"); }
+$("#xdl").onclick = async () => {
+  const t = await api("/v1/ontology/export.ttl"), a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([t], {type: "text/turtle"})); a.download = "ontology.ttl"; a.click();
+};
+
+refreshAll().then(() => renderFields()).catch(e => document.body.insertAdjacentHTML("afterbegin", `<div class="msg err" style="display:block;margin:0">${esc(e.message)}</div>`));
+</script>
+</body>
+</html>

@@ -7,6 +7,7 @@
   python -m factory.cli verify-evidence # verify the hash-chained ledger
   python -m factory.cli audit REL-...   # reconstruct a release for auditors
   python -m factory.cli triage          # ops triage agent proposals from sanitized telemetry
+  python -m factory.cli ontology list   # ontology management (see `ontology --help`); UI at /ontology
 """
 from __future__ import annotations
 
@@ -27,6 +28,10 @@ def main(argv=None):
     sub.add_parser("verify-evidence")
     a = sub.add_parser("audit"); a.add_argument("release_id")
     sub.add_parser("triage")
+    o = sub.add_parser("ontology", help="list | proposals | show NAME | impact NAME | approve ID USER ROLE | reject ID USER REASON | discover SPEC_ID VERSION [DOC] | "
+                                                 "check SPEC_ID VERSION | export | actions | rules | run ACTION USER SUBJECT_JSON PARAMS_JSON [ENV] | "
+                                                 "requests [STATUS] | approve-request ID USER ROLE | test-rule EXPR DATA_JSON")
+    o.add_argument("action"); o.add_argument("args", nargs="*")
     args = ap.parse_args(argv)
 
     if args.cmd == "demo":
@@ -66,6 +71,31 @@ def main(argv=None):
         from .ops.audit import reconstruct
         r = reconstruct(Factory(), args.release_id); r.pop("chain")
         print(json.dumps(r, indent=2, default=str))
+    elif args.cmd == "ontology":
+        from pathlib import Path
+        from .factory import Factory
+        from .ontology.discovery import discover
+        f = Factory(); f.bootstrap(); o = f.ontology; a = args.args
+        out = {
+            "list": lambda: [{k: c[k] for k in ("name", "version", "data_class", "status", "synonyms")} for c in o.concepts(True)],
+            "proposals": lambda: [{k: p[k] for k in ("id", "kind", "target", "status", "tier", "roles", "validation")}
+                                  for p in o.proposals(a[0] if a else None)],
+            "show": lambda: {"concept": o.concept(a[0]), "history": o.history(a[0])},
+            "impact": lambda: o.impact(a[0]),
+            "approve": lambda: o.approve(a[0], a[1], a[2])["status"],
+            "reject": lambda: o.reject(a[0], a[1], " ".join(a[2:]))["status"],
+            "discover": lambda: discover(f, f.specs.get(a[0], int(a[1]))["body"],
+                                         [{"id": Path(a[2]).name, "text": Path(a[2]).read_text()}] if len(a) > 2 else []),
+            "check": lambda: o.check_spec(f.specs.get(a[0], int(a[1]))["body"]),
+            "export": lambda: o.export_turtle(),
+            "actions": lambda: list(o.all_actions().values()),
+            "rules": lambda: list(o.all_rules().values()),
+            "run": lambda: f.actions.execute(a[0], a[1], json.loads(a[2]), json.loads(a[3]), a[4] if len(a) > 4 else "nonprod"),
+            "requests": lambda: f.actions.requests(a[0] if a else None),
+            "approve-request": lambda: f.actions.approve(a[0], a[1], a[2]),
+            "test-rule": lambda: __import__("factory.ontology.rules", fromlist=["evaluate"]).evaluate(a[0], json.loads(a[1])),
+        }[args.action]()
+        print(out if isinstance(out, str) else json.dumps(out, indent=2, default=str))
     elif args.cmd == "triage":
         from .factory import Factory
         from .ops.dashboard import snapshot

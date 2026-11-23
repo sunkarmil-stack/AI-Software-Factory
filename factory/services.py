@@ -102,6 +102,25 @@ def build_impls(f) -> dict[str, ToolImpl]:
     def prod_db(action, args, ctx):
         return {"rows": []}
 
+    f.db.execute("CREATE TABLE IF NOT EXISTS holds_sor(hold_id TEXT PRIMARY KEY, op_id TEXT UNIQUE, tenant TEXT,"
+                 " account_id TEXT, amount_cents INTEGER, reason TEXT, status TEXT, created REAL)")
+
+    def holds(action, args, ctx):
+        """Synthetic system of record for account holds (stands in for the core deposits platform)."""
+        existing = f.db.one("SELECT hold_id FROM holds_sor WHERE op_id=?", (ctx.op_id,))
+        if existing:
+            return {"hold_id": existing["hold_id"], "status": "placed"}
+        hid = new_id("HLD")
+        f.db.execute("INSERT INTO holds_sor(hold_id,op_id,tenant,account_id,amount_cents,reason,status,created)"
+                     " VALUES(?,?,?,?,?,?,?,?)", (hid, ctx.op_id, args["tenant"], args["subject_id"], args["amount_cents"],
+                                                  args["reason"], "placed", now()))
+        return {"hold_id": hid, "status": "placed"}
+
+    def holds_reconcile(op_id):
+        r = f.db.one("SELECT hold_id FROM holds_sor WHERE op_id=?", (op_id,))
+        return {"hold_id": r["hold_id"], "status": "placed"} if r else None
+
     return {"repo": ToolImpl(repo), "sandbox": ToolImpl(sandbox), "review": ToolImpl(review), "deploy": ToolImpl(deploy),
             "secrets": ToolImpl(secrets), "kb": ToolImpl(kb), "review_queue": ToolImpl(review_queue),
-            "payments": ToolImpl(payments, reconcile=lambda op: f.payments.by_op(op)), "prod_db": ToolImpl(prod_db)}
+            "payments": ToolImpl(payments, reconcile=lambda op: f.payments.by_op(op)), "prod_db": ToolImpl(prod_db),
+            "holds": ToolImpl(holds, reconcile=holds_reconcile)}

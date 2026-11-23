@@ -26,6 +26,7 @@ factory pins, signs and records every version a run used.
 | Identities, roles, grants, tenants | `catalog/identities.yaml` | Editing principals and grants | No |
 | Capabilities skills may request | `catalog/capabilities.yaml` | Editing the list | No |
 | Build standards (approved base images, protected paths) | `catalog/build-standards.yaml` | Editing the standards | No |
+| Business ontology (concepts, attributes, relations, synonyms, business rules, actions) | `catalog/ontology/seed.yaml` + governed proposals | Ontology Studio (`/ontology`), API or CLI; discovery proposes changes automatically | No |
 | Project setup (owners, risk tier, budget, template, skills) | `Factory.onboard()` / `POST /v1/projects` | API call | No |
 | Runtime limits (time, attempts, tokens, cost, tool calls, fan-out) | per run (`limits`) and per agent manifest (`budgets`) | Request parameter or manifest | No |
 | Runtime environment | env vars `FACTORY_HOME`, `FACTORY_SANDBOX`, `FACTORY_ALLOW_DEV_ISOLATION` | Environment | No |
@@ -76,6 +77,21 @@ Extension never bypasses governance: new agents get grants only from `identities
 skills pass scanning and review, and every new tool or model sits behind the same gateways,
 policy, approvals and evidence.
 
+### Dynamic ontology: automatically discovered, human-governed
+
+The factory keeps a versioned business ontology: concepts (attributes, relations, synonyms, data
+classes), **business rules** (safe expressions that block, warn or require a named human approval)
+and **actions** (typed operations such as `CreateHold`, the only governed way for people and agents
+to change business objects; each run checks roles, evaluates the rules and calls the bound system
+through the tool gateway). An extractor and the ontology agent **propose concepts automatically** from specs and
+glossaries; synonyms apply automatically after validation, while new concepts, relations and
+definition changes need the ontology owner and architect (plus data owner and security for
+restricted data). Specs are checked against the ontology in Pipeline A, and a breaking concept change
+marks dependent specs, releases and approvals stale. It's managed in **Ontology Studio** at
+`/ontology`. See `docs/ontology.md`.
+
+![Ontology Studio](docs/screenshots/ontology-review-queue.png)
+
 ---
 
 ## Architecture
@@ -90,6 +106,7 @@ flowchart TB
         API["REST API<br/>factory/api.py"]
         CLI["CLI<br/>factory/cli.py"]
         DASH["Ops dashboard<br/>/dashboard"]
+        OSTU["Ontology Studio<br/>/ontology"]
     end
 
     subgraph CP["Control plane"]
@@ -99,11 +116,12 @@ flowchart TB
         SKR["Skill registry<br/>signed, pinned"]
         EVD["Evidence ledger<br/>hash-chained"]
         CTL["Kill switch /<br/>controls"]
+        ONT["Ontology registry<br/>discovered, governed"]
     end
 
     subgraph DE["Delivery execution"]
         ORC["Durable orchestrator<br/>leases, limits, checkpoints"]
-        AG["Agent runtime<br/>9 roles, 1 worker type"]
+        AG["Agent runtime<br/>10 roles, 1 worker type"]
         SBX["Sandboxes"]
         REPO["Git repo<br/>protected branches"]
     end
@@ -148,6 +166,7 @@ flowchart TB
     CTL -. enforced in .-> TGW
     CTL -. enforced in .-> MGW
     APR -. required by .-> REL
+    ONT -. checks .-> SPEC
     CP --> EVD
     DE --> EVD
     TB2 --> EVD
@@ -242,8 +261,8 @@ APPROVAL becomes stale, stale approvals are revoked, and promotion refuses stale
 ```bash
 python -m factory.cli demo            # full slice end to end (~3 s, offline)
 python -m factory.cli demo-rag        # bounded RAG agent + evaluation gate (ACC 07)
-python -m pytest                      # 52 tests incl. acceptance scenarios ACC 01-09
-python -m factory.cli serve           # control-plane API on :8088, ops dashboard at /dashboard
+python -m pytest                      # 76 tests incl. acceptance scenarios ACC 01-09 and ontology
+python -m factory.cli serve           # API on :8088 · ops dashboard /dashboard · Ontology Studio /ontology
 python -m factory.cli policy-test     # executable policy suite
 python -m factory.cli audit REL-...   # auditor reconstruction of a release
 ```
@@ -257,12 +276,13 @@ State goes to `$FACTORY_HOME` (default `./.factory-home`). Requirements: Python 
 |---|---|---|
 | Experience | `factory/api.py`, `factory/cli.py`, `factory/ops/dashboard.py` | REST API (durable run ids, 429 admission), CLI, 3-plane ops dashboard |
 | Control plane | `core/policy.py`, `core/approvals.py`, `specs/`, `skills/registry.py`, `core/evidence.py` | Executable policy + autonomy tiers, bound approvals, spec registry + trace graph, signed skill registry, hash-chained evidence ledger |
-| Delivery execution | `orchestrator/engine.py`, `agents/`, `delivery/sandbox.py`, `delivery/repo.py` | Durable workflow engine (leases, checkpoints, limits), 9 agent roles on one worker type, sandboxes, git with server-side branch protection |
+| Delivery execution | `orchestrator/engine.py`, `agents/`, `delivery/sandbox.py`, `delivery/repo.py` | Durable workflow engine (leases, checkpoints, limits), 10 agent roles on one worker type, sandboxes, git with server-side branch protection |
 | Trusted build/release | `delivery/ci.py`, `delivery/release.py` | Pipeline B checks, QA-protected acceptance suite, reproducible build, signed provenance; Pipeline D promotion, staged rollout, rollback, drift |
 | Product runtime | `product/rag_app.py`, `evals/harness.py` | Bounded RAG agent with read-only tools + human review queue; Pipeline C evaluation gate |
+| Ontology | `ontology/registry.py`, `ontology/rules.py`, `ontology/actions.py`, `ontology/discovery.py`, `ontology/api.py`, `ontology/ui.html` | Versioned concepts, business rules, governed actions, automatic discovery, tiered approvals, impact/staleness, spec checks, RDF/OWL export, Ontology Studio UI |
 | Shared services | `models/gateway.py`, `tools/gateway.py`, `tools/mcp.py`, `context/` | Model gateway (approved routing, quotas, budgets, fallbacks), tool gateway (authz, idempotency, breakers, DLQ, kill switch), MCP adapter, retrieval + memory |
 
-Catalog (`catalog/`): 9 agent manifests, 9 versioned prompts (+1 candidate), **11 skill packages**,
+Catalog (`catalog/`): 10 agent manifests, 10 versioned prompts (+1 candidate), **12 skill packages**, ontology seed,
 9 tool contracts, identities, model deployments, policy + policy tests, build standards.
 Template (`templates/fastapi-service/`): hexagonal FastAPI service, k8s manifests, Terraform, lockfile.
 
@@ -303,3 +323,4 @@ and every output still has to pass the agent's schema and the same downstream ga
 - `docs/decisions.md` — inception decisions recorded as ADRs (defaults + revisit triggers)
 - `docs/golden-path.md` — onboarding guide for a pilot team (ACC 10)
 - `docs/runbooks.md` — kill switch, stuck run, DLQ replay, recovery exercise, evidence verification
+- `docs/ontology.md` — dynamic ontology: discovery, governance tiers, impact, UI/API/CLI

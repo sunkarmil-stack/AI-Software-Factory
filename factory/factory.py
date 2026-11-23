@@ -8,6 +8,8 @@ from pathlib import Path
 import yaml
 
 from .agents import offline  # noqa: F401  (registers offline handlers)
+from .ontology import discovery as _onto_discovery  # noqa: F401  (registers ontology agent handler)
+from .ontology.registry import Ontology
 from .agents.runtime import Agent, load_manifest
 from .context.memory import MemoryStore
 from .context.retrieval import RetrievalService
@@ -56,6 +58,7 @@ class Factory:
         self.approvals = ApprovalService(self.db, self.keys, self.directory, self.ledger)
         self.trace = Trace(self.db)
         self.specs = SpecRegistry(self.db, self.ledger, self.trace, self.approvals)
+        self.ontology = Ontology(self)
         caps = set(yaml.safe_load((self.catalog / "capabilities.yaml").read_text())["capabilities"])
         self.skills = SkillRegistry(self.db, self.ledger, self.keys, self.approvals, self.home / "skill-store", caps)
         self.tools = ToolGateway(self.db, self.ledger, self.policy, self.controls, self.approvals, self.tm)
@@ -73,6 +76,8 @@ class Factory:
         for p in sorted((self.catalog / "tools").glob("*.yaml")):
             c = yaml.safe_load(p.read_text())
             self.tools.register(c, impls[c["name"]], actor="platform-bootstrap")
+        from .ontology.actions import ActionService
+        self.actions = ActionService(self)
         self.engine = Engine(self.db, self.ledger, self.tm, worker_id)
         self.engine.f = self
         self.engine.approval_resolver = self.approvals.require
@@ -120,7 +125,8 @@ class Factory:
                             (m["id"], m["version"], d, j(m), "approved"))
             self.ledger.record("agent.registered", f"{m['id']}@{m['version']}", "admin.pat", {"digest": d})
             bundles.append(m["id"])
-        return {"skills": published, "agents": bundles}
+        seeded = self.ontology.seed(self.catalog / "ontology" / "seed.yaml")
+        return {"skills": published, "agents": bundles, "ontology_seed": seeded}
 
     def agent(self, role: str) -> Agent:
         if role not in self._agents:

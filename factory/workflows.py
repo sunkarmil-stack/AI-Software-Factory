@@ -27,7 +27,11 @@ def a_validate(ctx):
     res = f.specs.submit(ctx.input["spec"], ctx.actor)
     if res.status == "blocked":
         raise StepBlocked(f"spec blocked: missing={res.missing} errors={res.errors[:3]} review_items={res.review_items}")
-    return {"digest": res.digest, "unresolved_decisions": res.unresolved_decisions}
+    findings = f.ontology.check_spec(ctx.input["spec"])
+    errors = [x for x in findings if x["severity"] == "error"]
+    if errors:
+        raise StepBlocked(f"spec conflicts with the approved ontology: {errors}")
+    return {"digest": res.digest, "unresolved_decisions": res.unresolved_decisions, "ontology_findings": findings}
 
 
 def a_analyze(ctx):
@@ -68,7 +72,8 @@ def a_baseline(ctx):
             rn = f.trace.current("REQ", rid, ctx.project)
             if rn:
                 f.trace.edge(tn, rn["id"], "implements")
-    return {"spec_node": res["spec_node"], "stale": res["stale"]}
+    linked = f.ontology.link_spec(spec)
+    return {"spec_node": res["spec_node"], "stale": res["stale"], "concepts": linked}
 
 
 SPEC_PIPELINE = Workflow("spec_pipeline", "1.0.0", [
@@ -274,6 +279,18 @@ RELEASE = Workflow("release", "1.0.0", [
 ])
 
 
+# ======================= Ontology discovery =======================
+def o_discover(ctx):
+    from .ontology.discovery import discover
+    f = ctx.engine.f
+    spec = _spec(ctx)
+    docs = ctx.input.get("documents", [])
+    return discover(f, spec, docs, run_ctx=ctx)
+
+
+ONTOLOGY_DISCOVERY = Workflow("ontology_discovery", "1.0.0", [Step("discover", o_discover, max_attempts=1)])
+
+
 def register_all(f) -> None:
-    for wf in (SPEC_PIPELINE, DELIVERY, RELEASE):
+    for wf in (SPEC_PIPELINE, DELIVERY, RELEASE, ONTOLOGY_DISCOVERY):
         f.engine.register(wf)

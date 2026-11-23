@@ -1,0 +1,23 @@
+# Reviewed seed concepts owned by the platform (loaded at bootstrap like the skill catalog).
+# Everything else enters the ontology through governed proposals.
+# standard_ref: set only to IRIs verified against the adopted FIBO release (left empty here).
+concepts:
+  - name: Tenant
+    definition: A line of business that partitions data and access, such as retail or wealth.
+    data_class: internal
+    owner: platform
+    synonyms: [business line]
+    attributes:
+      - {name: id, type: identifier, data_class: internal, required: true}
+      - {name: display_name, type: string, data_class: internal, required: true}
+    relations: []
+  - name: Customer
+    definition: A person or organization that holds one or more products with the bank.
+    data_class: confidential
+    owner: data-governance
+    synonyms: [client]
+    attributes:
+      - {name: id, type: identifier, data_class: confidential, required: true}
+      - {name: legal_name, type: string, data_class: confidential, required: true}
+    relations:
+      - {type: scopedBy, target: Tenant, cardinality: "1"}

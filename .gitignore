@@ -1,6 +1,9 @@
 # Factory runtime state (SQLite DB, evidence ledger, sandboxes, and the Ed25519 signing keys in .factory-home/keys)
 .factory-home/
 
+# Local experiment output (e.g. OpenSpec export)
+scratch/
+
 # Python
 __pycache__/
 *.py[cod]

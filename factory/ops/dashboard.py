@@ -59,7 +59,7 @@ def render(f) -> str:
 section{{background:#182029;border-radius:8px;padding:16px;margin:12px 0}}h2{{margin:0 0 8px;font-size:16px;color:#7fd1b9}}
 table{{border-collapse:collapse;width:100%}}th{{text-align:left;width:32%;color:#9fb3c8;font-weight:500;padding:4px}}td{{padding:4px}}
 code{{color:#f0f0f0}}</style><meta http-equiv="refresh" content="10"></head><body>
-<h1>AI Software Factory — operations</h1>
+<h1>AI Software Factory — operations</h1><p><a style="color:#7fd1b9" href="/ontology">Ontology Studio →</a></p>
 {panel("Factory health (control plane)", s["factory"])}
 {panel("Delivery outcomes", s["delivery"])}
 {panel("Product agent health", s["product"])}

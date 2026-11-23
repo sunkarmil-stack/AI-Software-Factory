@@ -12,7 +12,7 @@ from pathlib import Path
 import yaml
 
 HUMAN_ROLES = {"product_owner", "architect", "engineer", "qa_owner", "security", "model_owner",
-               "data_owner", "release_owner", "operator", "auditor", "platform_admin"}
+               "data_owner", "release_owner", "operator", "auditor", "platform_admin", "ontology_owner", "supervisor"}
 
 
 @dataclass

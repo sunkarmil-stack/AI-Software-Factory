@@ -85,6 +85,27 @@ principals:
   tenants:
   - retail
   token: dev-po.paula
+- id: onto.olivia
+  kind: human
+  roles:
+  - ontology_owner
+  tenants:
+  - retail
+  token: dev-onto.olivia
+- id: data.dana
+  kind: human
+  roles:
+  - data_owner
+  tenants:
+  - retail
+  token: dev-data.dana
+- id: ops.sue
+  kind: human
+  roles:
+  - supervisor
+  tenants:
+  - retail
+  token: dev-ops.sue
 - id: agent:specification
   kind: agent
   tenants:
@@ -187,3 +208,17 @@ principals:
   - '*'
   grants:
   - repo:*@*
+- id: agent:ontology
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+- id: ontology-actions
+  kind: workload
+  tenants:
+  - '*'
+  grants:
+  - holds:*@*
