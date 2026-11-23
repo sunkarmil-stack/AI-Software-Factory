@@ -84,9 +84,25 @@ Tests: `TA` = tests/test_acceptance_scenarios.py, `TC` = tests/test_controls.py,
 
 ACC 01–09: `tests/test_acceptance_scenarios.py` (all passing). ACC 10: automated portion in `TO test_second_team_golden_path`; the human exercise is described in `docs/golden-path.md`.
 
-## Additions beyond the requirements baseline
+## Business ontology, rules and actions (requirements v1.1)
 
-| Capability | Status | Implementation | Tests |
+`TO2` = tests/test_ontology.py, `TR` = tests/test_ontology_rules_actions.py.
+
+| Req | Status | Implementation | Test(s) / gap |
 |---|---|---|---|
-| Dynamic governed ontology (automatic discovery, tiered approval, impact/staleness, spec checks, RDF export, Ontology Studio UI) | Done | `factory/ontology/` | `tests/test_ontology.py` (11 tests) |
-| Ontology business rules and actions (safe rule engine, governed action execution, rule-driven approvals, tool binding) | Done | `factory/ontology/rules.py`, `actions.py` | `tests/test_ontology_rules_actions.py` (13 tests) |
+| REQ 059 | Done | `ontology/registry.py`: versioned concepts, digests, history | TO2 seed, tiered approval |
+| REQ 060 | Done | proposals only; nothing applies before approval | TO2 discovery, tiered approval |
+| REQ 061 | Done | `ontology/discovery.py`: contract extraction + ontology agent with evidence | TO2 discovery; TR discovery |
+| REQ 062 | Done | registry validation | TO2 validation, ambiguous synonym |
+| REQ 063 | Done | tiering, bound approvals, separation of duties | TO2 tiered approval, restricted, tamper; TR discovery roles |
+| REQ 064 | Done | `ontology/rules.py` safe evaluator | TR rule engine, validation |
+| REQ 065 | Done | action contract validation | TR validation, consequential needs security |
+| REQ 066 | Done | `ontology/actions.py` execution | TR execute, block, require approval, who may run |
+| REQ 067 | Done | `ontology-actions` workload via tool gateway, stable op id | TR execute, require approval (no duplicate) |
+| REQ 068 | Done | CONCEPT trace nodes, breaking vs additive | TO2 breaking change; TR rule change invalidates release |
+| REQ 069 | Done | `Ontology.check_spec` in Pipeline A | TO2 spec check; TR contract vs rules |
+| REQ 070 | Partial | Ontology Studio, `/v1/ontology/*`, CLI | TO2 API/UI — dev sign-in only; Entra ID not integrated |
+| REQ 071 | Expansion — not built | | FIBO alignment, cross-object rules, graph retrieval, graph store |
+| ACC 11 | Done | | TO2 discovery (embedded instruction has no effect) |
+| ACC 12 | Done | | TR block rule, require-approval request |
+| ACC 13 | Done | | TR rule change invalidates release; TO2 breaking change |
