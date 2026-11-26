@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retail-account-risk
+  labels: {app: retail-account-risk}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: retail-account-risk}}
+  template:
+    metadata:
+      labels: {app: retail-account-risk}
+    spec:
+      serviceAccountName: retail-account-risk
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: app
+          image: IMAGE_DIGEST   # set by the promotion service; never a mutable tag
+          ports: [{containerPort: 8080}]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe: {httpGet: {path: /healthz, port: 8080}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: retail-account-risk}
+spec:
+  type: ClusterIP
+  selector: {app: retail-account-risk}
+  ports: [{port: 80, targetPort: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: retail-account-risk-default-deny}
+spec:
+  podSelector: {matchLabels: {app: retail-account-risk}}
+  policyTypes: [Ingress, Egress]
+  ingress: [{from: [{namespaceSelector: {matchLabels: {role: api-gateway}}}]}]
+  egress: []

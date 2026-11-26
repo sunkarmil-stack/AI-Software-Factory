@@ -1,0 +1,32 @@
+name: regulatory-reporting-analysis
+version: 1.0.0
+owner: regulatory-reporting
+description: Draft factual variance commentary and triage data-quality breaks for
+  regulatory returns, using only computed figures and table metadata.
+compatibility:
+  factory: '>=0.1'
+  agents: regulatory reporting product agents
+inputs:
+- material variances
+- data-quality breaks
+outputs:
+- draft commentary
+- triage items
+requested_capabilities:
+- load_log.read
+data_classes:
+- internal
+- confidential
+side_effects: none
+network: false
+limitations:
+- Never states business drivers; the preparer confirms them.
+- Never computes, certifies or files figures.
+risk: medium
+tests:
+- name: structure
+  expect_sections:
+  - '## Inputs'
+  - '## Outputs'
+  - '## Procedure'
+  - '## Limitations'

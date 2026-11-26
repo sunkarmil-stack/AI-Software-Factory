@@ -1,0 +1,30 @@
+name: risk-investigation
+version: 1.0.0
+owner: retail-risk
+description: Summarize fraud, AML and credit early-warning alerts from reason codes
+  and computed signals, in neutral language.
+compatibility:
+  factory: '>=0.1'
+  agents: retail risk product agents
+inputs:
+- alert with score and reason codes
+outputs:
+- neutral summary
+- suggested next step
+requested_capabilities: []
+data_classes:
+- internal
+- confidential
+side_effects: none
+network: false
+limitations:
+- Never decides, restricts, changes limits or files reports.
+- Describes behaviour, never character or guilt.
+risk: medium
+tests:
+- name: structure
+  expect_sections:
+  - '## Inputs'
+  - '## Outputs'
+  - '## Procedure'
+  - '## Limitations'

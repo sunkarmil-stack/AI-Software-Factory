@@ -1,0 +1,109 @@
+{
+  "info": {
+    "title": "Risk Cases API",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/cases": {
+      "get": {
+        "operationId": "listCases",
+        "responses": {
+          "200": {
+            "description": "cases"
+          },
+          "401": {
+            "description": "unauthenticated"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-require-mfa": false,
+        "x-required-scope": "cases:read"
+      }
+    },
+    "/cases/{case_id}": {
+      "get": {
+        "operationId": "getCase",
+        "responses": {
+          "200": {
+            "description": "case"
+          },
+          "401": {
+            "description": "unauthenticated"
+          },
+          "403": {
+            "description": "forbidden"
+          },
+          "404": {
+            "description": "not found"
+          }
+        },
+        "x-require-mfa": false,
+        "x-required-scope": "cases:read"
+      }
+    },
+    "/cases/{case_id}/notes": {
+      "post": {
+        "operationId": "addCaseNote",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "author": {
+                    "type": "string"
+                  },
+                  "idempotency_key": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "minLength": 10,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "note",
+                  "author"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "note added"
+          },
+          "400": {
+            "description": "invalid"
+          },
+          "403": {
+            "description": "forbidden"
+          },
+          "404": {
+            "description": "not found"
+          },
+          "409": {
+            "description": "case not open"
+          }
+        },
+        "x-require-mfa": false,
+        "x-required-scope": "cases:write"
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "healthz",
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        },
+        "x-require-mfa": false,
+        "x-required-scope": "public"
+      }
+    }
+  }
+}

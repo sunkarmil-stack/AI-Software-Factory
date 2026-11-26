@@ -1,0 +1,30 @@
+name: test-design
+version: 1.0.0
+owner: ai-platform-team
+description: Propose unit, contract and risk-targeted test candidates from acceptance
+  criteria.
+compatibility:
+  factory: '>=0.1'
+  agents: any delivery agent
+inputs:
+- acceptance criteria
+outputs:
+- test candidate files
+requested_capabilities:
+- repo.write_branch
+- sandbox.run
+data_classes:
+- internal
+- confidential
+side_effects: none
+network: false
+limitations:
+- Candidates do not determine readiness; protected acceptance tests do.
+risk: low
+tests:
+- name: structure
+  expect_sections:
+  - '## Inputs'
+  - '## Outputs'
+  - '## Procedure'
+  - '## Limitations'

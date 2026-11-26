@@ -1,0 +1,30 @@
+name: dependency-review
+version: 1.0.0
+owner: ai-platform-team
+description: Review dependency changes for pinning, licence and known-vulnerability
+  risk.
+compatibility:
+  factory: '>=0.1'
+  agents: any delivery agent
+inputs:
+- requirements.lock diff
+outputs:
+- dependency findings
+requested_capabilities:
+- repo.read
+data_classes:
+- internal
+- confidential
+side_effects: workspace-write
+network: false
+limitations:
+- Vulnerability data comes from the enterprise scanner; this skill does not query
+  the Internet.
+risk: medium
+tests:
+- name: structure
+  expect_sections:
+  - '## Inputs'
+  - '## Outputs'
+  - '## Procedure'
+  - '## Limitations'
