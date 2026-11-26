@@ -139,7 +139,7 @@ class ToolGateway:
         return d
 
     def register_yaml(self, path, impl: ToolImpl) -> str:
-        return self.register(yaml.safe_load(open(path).read()), impl)
+        return self.register(yaml.safe_load(open(path, encoding="utf-8").read()), impl)
 
     def contract_digest(self, name: str) -> str:
         return digest_obj(self.contracts[name])

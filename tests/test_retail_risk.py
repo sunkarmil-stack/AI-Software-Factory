@@ -192,7 +192,7 @@ def test_factory_delivers_the_risk_cases_api(kf):
     from factory.core.util import REPO_ROOT
     from factory.delivery.repo import git
     from factory.demo import run_delivery, run_release, run_spec
-    spec = yaml.safe_load((REPO_ROOT / "samples" / "specs" / "risk-cases-api.v1.yaml").read_text())
+    spec = yaml.safe_load((REPO_ROOT / "samples" / "specs" / "risk-cases-api.v1.yaml").read_text(encoding="utf-8"))
     run_spec(kf, spec, tenant="retail", po="po.priya")
     d = run_delivery(kf, spec, tenant="retail")
     r = run_release(kf, spec, d["pr_id"], tenant="retail")

@@ -16,6 +16,7 @@ from pathlib import Path
 
 import yaml
 
+from ..core.platform import IS_WINDOWS, TEXT, child_env, rmtree
 from ..core.approvals import ApprovalService
 from ..core.crypto import KeyStore
 from ..core.db import DB, j, unj
@@ -73,11 +74,11 @@ class SkillRegistry:
         mf = pkg / "skill.yaml"
         if not mf.exists():
             return {}, ["missing skill.yaml"]
-        m = yaml.safe_load(mf.read_text()) or {}
+        m = yaml.safe_load(mf.read_text(encoding="utf-8")) or {}
         for f in REQUIRED_MANIFEST:
             if f not in m:
                 problems.append(f"manifest missing {f}")
-        instr = (pkg / "SKILL.md").read_text() if (pkg / "SKILL.md").exists() else ""
+        instr = (pkg / "SKILL.md").read_text(encoding="utf-8") if (pkg / "SKILL.md").exists() else ""
         if not instr:
             problems.append("missing SKILL.md instructions")
         for s in SECTIONS:
@@ -86,7 +87,7 @@ class SkillRegistry:
         for p in sorted(pkg.rglob("*")):
             if not p.is_file():
                 continue
-            text = p.read_text(errors="ignore")
+            text = p.read_text(errors="ignore", encoding="utf-8")
             for pat in INJECTION_PATTERNS:
                 if re.search(pat, text, re.I):
                     problems.append(f"malicious/unsafe instruction pattern '{pat}' in {p.relative_to(pkg)}")
@@ -111,7 +112,8 @@ class SkillRegistry:
                         f"print(json.dumps(mod['run'](json.loads(sys.argv[1]))))")
                 try:
                     r = subprocess.run([sys.executable, "-I", "-c", code, j(t.get("input", {}))], capture_output=True,
-                                       text=True, timeout=20, env={"PATH": "/usr/bin:/bin"}, cwd=str(pkg))
+                                       timeout=20, env=child_env(path=None if IS_WINDOWS else "/usr/bin:/bin"),
+                                       cwd=str(pkg), **TEXT)
                 except subprocess.TimeoutExpired:
                     out.append(f"behavior test {t['name']} timed out"); continue
                 if r.returncode != 0:
@@ -122,7 +124,7 @@ class SkillRegistry:
                         out.append(f"behavior test {t['name']}: {k}={res.get(k)!r} expected {v!r}")
             else:
                 for k in t.get("expect_sections", []):
-                    if k not in (pkg / "SKILL.md").read_text():
+                    if k not in (pkg / "SKILL.md").read_text(encoding="utf-8"):
                         out.append(f"behavior test {t['name']}: missing {k}")
         return out
 
@@ -148,7 +150,7 @@ class SkillRegistry:
                 "skill.publish", digest, "registry", f"{m['name']}@{m['version']}"), ["security"])
         dest = self.store / f"{m['name']}@{m['version']}"
         if dest.exists():
-            shutil.rmtree(dest)
+            rmtree(dest)
         shutil.copytree(pkg, dest, ignore=shutil.ignore_patterns("__pycache__"))
         sig = self.keys.sign("skill-registry", f"{m['name']}@{m['version']}|{digest}".encode())
         self.db.execute("INSERT INTO skills(name,version,digest,signature,manifest,path,status,owner,published)"
@@ -174,7 +176,7 @@ class SkillRegistry:
             raise SkillIntegrityError(f"skill {name}@{version} content digest/signature mismatch — rejected")
         self.ledger.record("skill.loaded", f"{name}@{version}", "skill-registry", {"digest": r["digest"], "run": run_id})
         path = Path(r["path"])
-        return LoadedSkill(name, version, r["digest"], unj(r["manifest"]), (path / "SKILL.md").read_text(), path)
+        return LoadedSkill(name, version, r["digest"], unj(r["manifest"]), (path / "SKILL.md").read_text(encoding="utf-8"), path)
 
     def affected_runs(self, name: str, version: str) -> list[str]:
         return sorted({e["data"].get("run") for e in self.ledger.query(subject=f"{name}@{version}", kind="skill.loaded")})

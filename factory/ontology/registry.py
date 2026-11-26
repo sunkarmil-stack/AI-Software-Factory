@@ -536,7 +536,7 @@ class Ontology:
 
     def seed(self, path: Path, actor: str = "admin.pat") -> list[str]:
         """Load the reviewed catalog seed (platform-owned, like the skill catalog)."""
-        doc = yaml.safe_load(Path(path).read_text())
+        doc = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
         out = []
         for c in doc["concepts"]:
             if self.concept(c["name"]):

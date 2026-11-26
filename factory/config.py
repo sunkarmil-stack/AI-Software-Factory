@@ -103,7 +103,7 @@ def load(path: str | Path | None = None, **overrides: Any) -> Settings:
     s = Settings()
     path = path or os.environ.get("FACTORY_CONFIG")
     if path:
-        _merge(s, yaml.safe_load(Path(path).read_text()) or {})
+        _merge(s, yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {})
     elif os.environ.get("FACTORY_PROFILE"):
         s.profile = os.environ["FACTORY_PROFILE"]
     if os.environ.get("FACTORY_DATABASE_URL"):

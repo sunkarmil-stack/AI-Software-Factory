@@ -23,7 +23,7 @@ APPROVERS = (("onto.olivia", "ontology_owner"), ("arch.alex", "architect"), ("po
 
 
 def load_spec() -> dict:
-    return yaml.safe_load((REPO_ROOT / "samples" / "specs" / "wealth-advice-api.v1.yaml").read_text())
+    return yaml.safe_load((REPO_ROOT / "samples" / "specs" / "wealth-advice-api.v1.yaml").read_text(encoding="utf-8"))
 
 
 def approve_pack(f) -> int:

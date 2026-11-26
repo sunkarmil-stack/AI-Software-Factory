@@ -17,7 +17,7 @@ from ..core.db import j
 
 
 def load_suite(path: Path | None = None) -> dict:
-    return yaml.safe_load((path or REPO_ROOT / "samples" / "rag" / "evals.yaml").read_text())
+    return yaml.safe_load((path or REPO_ROOT / "samples" / "rag" / "evals.yaml").read_text(encoding="utf-8"))
 
 
 def _score(case: dict, ans) -> tuple[bool, str]:

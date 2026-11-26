@@ -82,7 +82,7 @@ class AzureStandIn:
     def write_sa_token(self, client_id: str, path: Path) -> str:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(f"standin-sa-token:{client_id}")
+        path.write_text(f"standin-sa-token:{client_id}", encoding="utf-8")
         return str(path)
 
     def _issue(self, claims: dict, ttl: int = 3600) -> str:

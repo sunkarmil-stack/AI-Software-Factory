@@ -260,7 +260,7 @@ def test_factory_delivers_the_regulatory_returns_api(rf):
     from factory.core.util import REPO_ROOT
     from factory.delivery.repo import git
     from factory.demo import run_delivery, run_release, run_spec
-    spec = yaml.safe_load((REPO_ROOT / "samples" / "specs" / "regulatory-returns-api.v1.yaml").read_text())
+    spec = yaml.safe_load((REPO_ROOT / "samples" / "specs" / "regulatory-returns-api.v1.yaml").read_text(encoding="utf-8"))
     run_spec(rf, spec, tenant="finance", po="po.fran")
     d = run_delivery(rf, spec, tenant="finance")
     r = run_release(rf, spec, d["pr_id"], tenant="finance")

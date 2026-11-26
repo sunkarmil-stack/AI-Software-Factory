@@ -99,7 +99,7 @@ def main(argv=None):
         from .core.policy import PolicyEngine
         from .core.util import REPO_ROOT
         pe = PolicyEngine.load(REPO_ROOT / "catalog/policy/factory-core.yaml")
-        fails = pe.run_tests(yaml.safe_load((REPO_ROOT / "catalog/policy/factory-core.tests.yaml").read_text()))
+        fails = pe.run_tests(yaml.safe_load((REPO_ROOT / "catalog/policy/factory-core.tests.yaml").read_text(encoding="utf-8")))
         print("PASS" if not fails else "\n".join(fails)); sys.exit(1 if fails else 0)
     elif args.cmd == "verify-evidence":
         from .factory import Factory
@@ -124,7 +124,7 @@ def main(argv=None):
             "approve": lambda: o.approve(a[0], a[1], a[2])["status"],
             "reject": lambda: o.reject(a[0], a[1], " ".join(a[2:]))["status"],
             "discover": lambda: discover(f, f.specs.get(a[0], int(a[1]))["body"],
-                                         [{"id": Path(a[2]).name, "text": Path(a[2]).read_text()}] if len(a) > 2 else []),
+                                         [{"id": Path(a[2]).name, "text": Path(a[2]).read_text(encoding="utf-8")}] if len(a) > 2 else []),
             "check": lambda: o.check_spec(f.specs.get(a[0], int(a[1]))["body"]),
             "export": lambda: o.export_turtle(),
             "actions": lambda: list(o.all_actions().values()),
@@ -140,8 +140,8 @@ def main(argv=None):
         from .core.util import REPO_ROOT
         st = config.load()
         cat = REPO_ROOT / "catalog"
-        checks = config.preflight(st, yaml.safe_load((cat / st.models_catalog).read_text()),
-                                  [yaml.safe_load(p.read_text()) for p in sorted((cat / "tools").glob("*.yaml"))])
+        checks = config.preflight(st, yaml.safe_load((cat / st.models_catalog).read_text(encoding="utf-8")),
+                                  [yaml.safe_load(p.read_text(encoding="utf-8")) for p in sorted((cat / "tools").glob("*.yaml"))])
         for c in checks:
             mark = "PASS" if c.ok else ("EXEMPT" if c.exempted_by else "FAIL")
             print(f"{mark:6} {c.name:18} {c.detail}{'  [' + c.exempted_by + ']' if c.exempted_by else ''}")
@@ -158,7 +158,7 @@ def main(argv=None):
         from .core.util import REPO_ROOT
         mdir = REPO_ROOT / "migrations" / "postgres"
         if args.emit:
-            (mdir / "001_init.sql").write_text(pg_ddl()); print("wrote", mdir / "001_init.sql")
+            (mdir / "001_init.sql").write_text(pg_ddl(), encoding="utf-8"); print("wrote", mdir / "001_init.sql")
         if args.apply:
             import os
             import psycopg   # production dependency
@@ -174,7 +174,7 @@ def main(argv=None):
                 done = {r[0] for r in c.execute("SELECT name FROM schema_migrations")}
                 for p in sorted(mdir.glob("*.sql")):
                     if p.name not in done:
-                        c.execute(p.read_text()); c.execute("INSERT INTO schema_migrations VALUES(%s, extract(epoch from now()))", (p.name,))
+                        c.execute(p.read_text(encoding="utf-8")); c.execute("INSERT INTO schema_migrations VALUES(%s, extract(epoch from now()))", (p.name,))
                         print("applied", p.name)
     elif args.cmd == "standin":
         import time

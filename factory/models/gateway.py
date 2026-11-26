@@ -208,7 +208,7 @@ class ModelGateway:
 
     @classmethod
     def load(cls, db, ledger, controls, telemetry, path) -> "ModelGateway":
-        return cls(db, ledger, controls, telemetry, yaml.safe_load(open(path).read()))
+        return cls(db, ledger, controls, telemetry, yaml.safe_load(open(path, encoding="utf-8").read()))
 
     def _authorize(self, ctx: ModelContext, dep_id: str) -> dict:
         dep = self.deployments.get(dep_id)

@@ -21,6 +21,7 @@ from pathlib import Path
 
 import yaml
 
+from ..core.platform import rmtree
 from ..core.approvals import ApprovalService
 from ..core.util import canonical_json, digest_obj, iso, iter_files, new_id, now, sha256_bytes
 from ..core.db import j, unj
@@ -51,8 +52,8 @@ class QAStore:
             "acceptance.publish", d, "ci", f"{spec['spec_id']}@v{spec['version']}"), rationale="acceptance suite from approved ACs")
         p = self.path(spec["project"], spec["spec_id"], spec["version"])
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(src)
-        (p.parent / "approval.json").write_text(json.dumps({"approval": aid, "digest": d}))
+        p.write_text(src, encoding="utf-8")
+        (p.parent / "approval.json").write_text(json.dumps({"approval": aid, "digest": d}), encoding="utf-8")
         self.f.ledger.record("qa.acceptance_published", f"{spec['spec_id']}@v{spec['version']}", qa_owner,
                              {"digest": d, "approval": aid}, spec["project"])
         return {"digest": d, "approval": aid}
@@ -61,8 +62,8 @@ class QAStore:
         p = self.path(project, spec_id, version)
         if not p.exists():
             raise PermissionError("no QA-approved acceptance suite for this spec version")
-        meta = json.loads((p.parent / "approval.json").read_text())
-        src = p.read_text()
+        meta = json.loads((p.parent / "approval.json").read_text(encoding="utf-8"))
+        src = p.read_text(encoding="utf-8")
         d = sha256_bytes(src.encode())
         chk = self.f.approvals.check(meta["approval"], ApprovalService.binding(
             "acceptance.publish", d, "ci", f"{spec_id}@v{version}"), "qa_owner")
@@ -98,7 +99,7 @@ def sast(src: Path) -> list[str]:
         rel = p.relative_to(src).as_posix()
         if rel.startswith("tests/"):
             continue
-        tree = ast.parse(p.read_text(), rel)
+        tree = ast.parse(p.read_text(encoding="utf-8"), rel)
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
                 name = ast.unparse(node.func)
@@ -124,7 +125,7 @@ def sast(src: Path) -> list[str]:
 def iac_policy(src: Path) -> list[str]:
     out = []
     for p in sorted((src / "deploy").rglob("*.yaml")) if (src / "deploy").exists() else []:
-        for doc in yaml.safe_load_all(p.read_text()):
+        for doc in yaml.safe_load_all(p.read_text(encoding="utf-8")):
             if not doc:
                 continue
             kind = doc.get("kind")
@@ -148,7 +149,7 @@ def iac_policy(src: Path) -> list[str]:
                     "internal" not in json.dumps(doc["metadata"].get("annotations", {})):
                 out.append(f"{p.name}: public LoadBalancer endpoint prohibited")
     for p in sorted((src / "infra").rglob("*.tf")) if (src / "infra").exists() else []:
-        t = p.read_text()
+        t = p.read_text(encoding="utf-8")
         if re.search(r"public_network_access_enabled\s*=\s*true", t):
             out.append(f"{p.name}: public network access prohibited")
         for m in re.finditer(r'source\s*=\s*"[^"]+",\s*version\s*=\s*"([^"]+)"', t):
@@ -168,7 +169,7 @@ class TrustedCI:
         self.registry = f.home / "registry"
         self.registry.mkdir(parents=True, exist_ok=True)
         self.qa = QAStore(f)
-        self.standards = yaml.safe_load((f.catalog / "build-standards.yaml").read_text())
+        self.standards = yaml.safe_load((f.catalog / "build-standards.yaml").read_text(encoding="utf-8"))
 
     def _py(self, cwd: Path, args: list[str], timeout=300) -> subprocess.CompletedProcess:
         return subprocess.run([sys.executable, *args], cwd=str(cwd), env={**CI_ENV, "HOME": str(cwd), "PYTHONPATH": str(cwd)},
@@ -194,23 +195,23 @@ class TrustedCI:
                                        if any(c.startswith(pp) for pp in self.standards["protected_paths"])])
         else:
             checks["protected_assets"] = "passed"
-        lock = (src / "requirements.lock").read_text().splitlines() if (src / "requirements.lock").exists() else []
+        lock = (src / "requirements.lock").read_text(encoding="utf-8").splitlines() if (src / "requirements.lock").exists() else []
         deps = [l.strip() for l in lock if l.strip() and not l.startswith("#")]
         check("dependency_pinning", [f"unpinned dependency {d}" for d in deps if "==" not in d])
         if not any("--hash=" in d for d in deps):
             limitations.append("dependency hashes not enforced: enterprise package mirror not configured")
-        df = (src / "Dockerfile").read_text() if (src / "Dockerfile").exists() else ""
+        df = (src / "Dockerfile").read_text(encoding="utf-8") if (src / "Dockerfile").exists() else ""
         check("base_image", [] if "ARG BASE_IMAGE" in df and "FROM ${BASE_IMAGE}" in df else
               ["Dockerfile must take BASE_IMAGE from trusted CI (approved list)"])
         check("iac_policy", iac_policy(src))
         check("secret_scan", [f"{p.relative_to(src)}: {r.pattern}" for p in iter_files(src)
-                              for r in SECRET_RE if r.search(p.read_text(errors="ignore"))])
+                              for r in SECRET_RE if r.search(p.read_text(errors="ignore", encoding="utf-8"))])
         check("sast", sast(src))
         # tests: unit (branch) + protected acceptance (QA store)
         acc_src, acc_digest = self.qa.load(project, spec["spec_id"], spec["version"])
-        shutil.rmtree(src / "tests" / "acceptance", ignore_errors=True)
+        rmtree(src / "tests" / "acceptance", ignore_errors=True)
         (src / "tests" / "acceptance").mkdir(parents=True)
-        (src / "tests" / "acceptance" / "test_protected.py").write_text(acc_src)
+        (src / "tests" / "acceptance" / "test_protected.py").write_text(acc_src, encoding="utf-8")
         unit = self._py(src, ["-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/unit"]) if (src / "tests" / "unit").exists() else None
         check("unit_tests", [] if unit is None or unit.returncode == 0 else [unit.stdout[-1500:]])
         acc = self._py(src, ["-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/acceptance", f"--junitxml={work}/acc.xml"])
@@ -236,7 +237,7 @@ class TrustedCI:
                     want = (ep["method"].upper(), ep["path"], ep["operation_id"], ep["required_scope"])
                     if want not in actual:
                         problems.append(f"contract {c['id']}@{c['version']}: missing/incorrect {want}")
-            oa = json.loads((src / "openapi.json").read_text()) if (src / "openapi.json").exists() else {"paths": {}}
+            oa = json.loads((src / "openapi.json").read_text(encoding="utf-8")) if (src / "openapi.json").exists() else {"paths": {}}
             for c in spec["contracts"]:
                 for ep in c["endpoints"]:
                     op = oa["paths"].get(ep["path"], {}).get(ep["method"].lower())
@@ -297,7 +298,7 @@ class TrustedCI:
                     t.edge(bnode, tn, "validated_by")
             if change_ref:
                 t.edge(bnode, change_ref, "built_from")
-        shutil.rmtree(work / "src", ignore_errors=True)
+        rmtree(work / "src", ignore_errors=True)
         return self.build(bid)
 
     def build(self, bid: str) -> dict:

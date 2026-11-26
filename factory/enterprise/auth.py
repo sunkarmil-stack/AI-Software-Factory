@@ -41,7 +41,7 @@ class WorkloadTokenProvider:
             hit = self._cache.get(scope)
             if hit and hit[1] - 300 > time.time():
                 return hit[0]
-        assertion = open(self.token_file).read().strip()
+        assertion = open(self.token_file, encoding="utf-8").read().strip()
         body = urllib.parse.urlencode({
             "client_id": self.client_id, "scope": scope, "grant_type": "client_credentials",
             "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",

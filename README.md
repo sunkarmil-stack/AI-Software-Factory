@@ -368,6 +368,21 @@ python -m factory.cli audit REL-...   # auditor reconstruction of a release
 State goes to `$FACTORY_HOME` (default `./.factory-home`). Requirements: Python ≥ 3.11 with
 `pydantic`, `pyyaml`, `jsonschema`, `cryptography`, `starlette`, `uvicorn`, `pytest`; `git` on PATH.
 
+### Running on Windows
+
+The factory runs on Linux, macOS and Windows. On Windows:
+
+- Install [Git for Windows](https://git-scm.com/download/win) and keep it on `PATH`. The repository protection hooks
+  are shell scripts, and Git for Windows runs them with its bundled `sh`.
+- Use Python 3.11 or later from python.org (not the Microsoft Store build, which restricts child processes).
+- Run from PowerShell or Command Prompt; `FACTORY_HOME` is set with `$env:FACTORY_HOME="C:\factory-home"` (PowerShell)
+  or `set FACTORY_HOME=C:\factory-home` (Command Prompt).
+- The dev `process` sandbox has fewer limits on Windows: no CPU, memory or file-size rlimits (the Unix-only
+  `resource` module), only the timeout and a scrubbed environment. That is acceptable for the offline demos, which
+  only run the factory's own generated code. For anything else, use the `container` backend
+  (`FACTORY_SANDBOX=container` with Docker Desktop) or the production Kubernetes sandbox.
+- All file and process I/O is UTF-8 regardless of the Windows code page, so no `PYTHONUTF8` setting is needed.
+
 ## What is in the box
 
 | Layer (Sec. 4) | Module | What it does |

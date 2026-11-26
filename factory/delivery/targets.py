@@ -60,7 +60,7 @@ class LocalTarget(DeploymentTarget):
         d = self.r._deploy_dir(project, env)
         d.mkdir(parents=True, exist_ok=True)
         extract_artifact(self.r.f.ci.registry, state["digest"], d / state["digest"].split(":")[1][:16])
-        (d / "desired.json").write_text(json.dumps(state))
+        (d / "desired.json").write_text(json.dumps(state), encoding="utf-8")
         return str(d / "desired.json")
 
     def verify(self, project, env, digest, spec):
@@ -68,7 +68,7 @@ class LocalTarget(DeploymentTarget):
 
     def desired(self, project, env):
         p = self.r._deploy_dir(project, env) / "desired.json"
-        return json.loads(p.read_text()) if p.exists() else None
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
     def runtime_drift(self, project, env, digest):
         from ..core.util import sha256_bytes
@@ -106,12 +106,12 @@ class GitOpsTarget(DeploymentTarget):
         (d / "release.yaml").write_text(yaml.safe_dump({
             "release": state["release"], "image": f"registry.internal/{project}@{state['digest']}",
             "digest": state["digest"], "stage": state["stage"], "canaryWeight": state["weight"],
-            "previous": state.get("previous")}, sort_keys=True))
+            "previous": state.get("previous")}, sort_keys=True), encoding="utf-8")
         (d / "kustomization.yaml").write_text(yaml.safe_dump({
             "apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization",
             "resources": [f"../../../base/{project}"],
             "images": [{"name": project, "newName": f"registry.internal/{project}", "digest": state["digest"]}]},
-            sort_keys=False))
+            sort_keys=False), encoding="utf-8")
         git(["add", "-A"], w)
         env_ = self.r.f.repo._svc_env("release-service")
         if git(["status", "--porcelain"], w):

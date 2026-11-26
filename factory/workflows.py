@@ -110,7 +110,7 @@ def _sb(ctx):
 def d_implement(ctx):
     f = ctx.engine.f
     spec, sb = _spec(ctx), _sb(ctx)
-    workspace = {p.relative_to(sb.work).as_posix(): p.read_text(errors="ignore")
+    workspace = {p.relative_to(sb.work).as_posix(): p.read_text(errors="ignore", encoding="utf-8")
                  for p in sb.work.rglob("*") if p.is_file() and ".git" not in p.parts and p.stat().st_size < 200_000}
     task = {"kind": "implementation.generate", "spec": spec, "contract": spec["contracts"][0], "workspace": workspace}
     if ctx.input.get("defect"):
@@ -124,7 +124,7 @@ def d_implement(ctx):
             raise StepBlocked(f"implementation attempted to write outside its scoped workspace: {path}")
         p = sb.work / path
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(content)
+        p.write_text(content, encoding="utf-8")
     denied = [t for t in r.tool_results if not t["ok"]]
     return {"files": sorted(r.payload["files"]), "denied_tool_requests": denied, "evidence": r.evidence_refs}
 
@@ -137,7 +137,7 @@ def d_tests(ctx):
         if not path.startswith("tests/unit/"):
             raise StepBlocked(f"test agent may only propose unit test candidates, not {path}")
         (sb.work / path).parent.mkdir(parents=True, exist_ok=True)
-        (sb.work / path).write_text(content)
+        (sb.work / path).write_text(content, encoding="utf-8")
     return {"files": sorted(r.payload["files"])}
 
 

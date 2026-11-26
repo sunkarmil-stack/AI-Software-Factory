@@ -55,8 +55,8 @@ class Factory:
         self.home.mkdir(parents=True, exist_ok=True)
         self.catalog = Path(catalog or REPO_ROOT / "catalog")
         self.templates = REPO_ROOT / "templates"
-        models_cfg = yaml.safe_load((self.catalog / st.models_catalog).read_text())
-        contracts = [yaml.safe_load(p.read_text()) for p in sorted((self.catalog / "tools").glob("*.yaml"))]
+        models_cfg = yaml.safe_load((self.catalog / st.models_catalog).read_text(encoding="utf-8"))
+        contracts = [yaml.safe_load(p.read_text(encoding="utf-8")) for p in sorted((self.catalog / "tools").glob("*.yaml"))]
         self.preflight = config.preflight(st, models_cfg, contracts) if st.production else []
         bad = config.failures(self.preflight)
         if bad:
@@ -99,7 +99,7 @@ class Factory:
         self.trace = Trace(self.db)
         self.specs = SpecRegistry(self.db, self.ledger, self.trace, self.approvals)
         self.ontology = Ontology(self)
-        caps = set(yaml.safe_load((self.catalog / "capabilities.yaml").read_text())["capabilities"])
+        caps = set(yaml.safe_load((self.catalog / "capabilities.yaml").read_text(encoding="utf-8"))["capabilities"])
         self.skills = SkillRegistry(self.db, self.ledger, self.keys, self.approvals, self.home / "skill-store", caps)
         self.tools = ToolGateway(self.db, self.ledger, self.policy, self.controls, self.approvals, self.tm)
         self.models = ModelGateway(self.db, self.ledger, self.controls, self.tm, models_cfg)
@@ -124,7 +124,7 @@ class Factory:
         else:
             self.secret_store = {"prod-db-password": "s3cr3t-prod-value-never-in-sandbox"}
         impls = build_impls(self)
-        self.mcp_servers = (yaml.safe_load((self.catalog / "mcp_servers.yaml").read_text()) or {}).get("servers", {}) \
+        self.mcp_servers = (yaml.safe_load((self.catalog / "mcp_servers.yaml").read_text(encoding="utf-8")) or {}).get("servers", {}) \
             if (self.catalog / "mcp_servers.yaml").exists() else {}
         self.mcp_toolsets: dict = {}
         for c in contracts:
@@ -148,7 +148,7 @@ class Factory:
     # ---------------- policy (REQ 047) ----------------
     def _load_policy(self) -> PolicyEngine:
         pe = PolicyEngine.load(self.catalog / "policy" / "factory-core.yaml")
-        tests = yaml.safe_load((self.catalog / "policy" / "factory-core.tests.yaml").read_text())
+        tests = yaml.safe_load((self.catalog / "policy" / "factory-core.tests.yaml").read_text(encoding="utf-8"))
         failures = pe.run_tests(tests)
         if failures:
             raise PolicyLoadError(f"policy {pe.policy_id}@{pe.version} failed its test suite: {failures}")
@@ -173,7 +173,7 @@ class Factory:
         """Publish catalog skills (security review for medium risk) and register agent bundles with pinned digests."""
         published = []
         for pkg in sorted((self.catalog / "skills").iterdir()):
-            m = yaml.safe_load((pkg / "skill.yaml").read_text())
+            m = yaml.safe_load((pkg / "skill.yaml").read_text(encoding="utf-8"))
             appr = None
             if m["risk"] in ("medium", "high"):
                 from .core.util import digest_dir
@@ -193,7 +193,7 @@ class Factory:
                     raise ValueError(f"agent {m['id']} pins unknown skill {s['name']}@{s['version']}")
                 s["digest"] = r["digest"]
             pv = self.catalog / "prompts" / f"{m['prompt']['id']}.yaml"
-            m["prompt"]["digest"] = digest_obj(yaml.safe_load(pv.read_text()))
+            m["prompt"]["digest"] = digest_obj(yaml.safe_load(pv.read_text(encoding="utf-8")))
             d = digest_obj(m)
             self.db.execute("INSERT INTO agents(id,version,digest,manifest,status) VALUES(?,?,?,?,?)",
                             (m["id"], m["version"], d, j(m), "approved"))

@@ -36,19 +36,19 @@ DRIVER_CLAIM_RE = re.compile(r"\b(due to|because|driven by|as a result of|owing 
 
 # ---------------------------------------------------------------- configuration
 def domain() -> dict:
-    return yaml.safe_load((DOMAIN / "project.yaml").read_text())
+    return yaml.safe_load((DOMAIN / "project.yaml").read_text(encoding="utf-8"))
 
 
 def template(code: str) -> dict:
-    return yaml.safe_load((DOMAIN / "returns" / f"{code}.yaml").read_text())
+    return yaml.safe_load((DOMAIN / "returns" / f"{code}.yaml").read_text(encoding="utf-8"))
 
 
 def dq_config() -> dict:
-    return yaml.safe_load((DOMAIN / "dq.yaml").read_text())
+    return yaml.safe_load((DOMAIN / "dq.yaml").read_text(encoding="utf-8"))
 
 
 def entity() -> dict:
-    return yaml.safe_load((REPO_ROOT / "samples" / "osfi" / "lakehouse.yaml").read_text())["entity"]
+    return yaml.safe_load((REPO_ROOT / "samples" / "osfi" / "lakehouse.yaml").read_text(encoding="utf-8"))["entity"]
 
 
 def month_end(d: dt.date, months_back: int) -> dt.date:
@@ -364,7 +364,7 @@ class RegReportingApp:
 
 # ---------------------------------------------------------------- evaluation (Pipeline C for the product agents)
 def evaluate(f, app: RegReportingApp) -> dict:
-    suite = yaml.safe_load((DOMAIN / "evals.yaml").read_text())
+    suite = yaml.safe_load((DOMAIN / "evals.yaml").read_text(encoding="utf-8"))
     results: dict[str, list[bool]] = {}
     for case in suite["cases"]:
         ok = False

@@ -19,6 +19,7 @@ import tarfile
 import gzip
 from pathlib import Path
 
+from ..core.platform import IS_WINDOWS, TEXT, child_env
 from ..core.approvals import ApprovalError, ApprovalService
 from ..core.db import j, unj
 from ..core.evidence import EvidenceWriteError
@@ -203,7 +204,7 @@ class ReleaseService:
                 "for i,c in cs:\n q=c['request'];s,b=dispatch(r.ROUTES,q['method'],q['path'],q.get('headers',{}),q.get('body'))\n"
                 " out[i]=s==c['expect']['status']\nprint(json.dumps(out))")
         res = subprocess.run([sys.executable, "-I", "-c", code, json.dumps(checks)], cwd=str(path), capture_output=True,
-                             text=True, timeout=60)
+                             timeout=60, **TEXT)
         if res.returncode != 0:
             return [f"service failed to start: {res.stderr[-300:]}"]
         return [k for k, ok in json.loads(res.stdout).items() if not ok]

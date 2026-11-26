@@ -143,7 +143,7 @@ def routes(f, guard) -> list[Route]:
             return err(e)
 
     async def ui(req):
-        return HTMLResponse(UI.read_text())
+        return HTMLResponse(UI.read_text(encoding="utf-8"))
 
     return [
         Route("/ontology", ui),

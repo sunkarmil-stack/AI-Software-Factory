@@ -21,11 +21,11 @@ def domain_config(name: str) -> dict:
     p = DOMAINS / name / "project.yaml"
     if not p.exists():
         raise FileNotFoundError(f"no domain pack {name} (expected {p})")
-    return yaml.safe_load(p.read_text())
+    return yaml.safe_load(p.read_text(encoding="utf-8"))
 
 
 def import_ontology(f, path: Path, proposer: str) -> list[dict]:
-    doc = yaml.safe_load(Path(path).read_text())
+    doc = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     src, onto, out = doc["source"], f.ontology, []
     pending = {(p["kind"], p["target"], p["payload_digest"]) for p in onto.proposals("pending")}
 

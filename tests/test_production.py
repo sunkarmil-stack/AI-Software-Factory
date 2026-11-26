@@ -154,7 +154,7 @@ def test_enterprise_content_safety_and_quota(pf, standin):
 def test_ontology_action_reaches_system_of_record_via_gateway(pf, standin):
     from factory.ontology.discovery import discover
     pf.onboard("accounts", "retail", OWNERS, risk_tier=2, budget_usd=50.0)
-    discover(pf, load_spec(1), [{"id": "glossary.md", "text": (REPO_ROOT / "samples/ontology/glossary.md").read_text()}])
+    discover(pf, load_spec(1), [{"id": "glossary.md", "text": (REPO_ROOT / "samples/ontology/glossary.md").read_text(encoding="utf-8")}])
     for p in pf.ontology.proposals("pending"):
         for u, role in (("onto.olivia", "ontology_owner"), ("arch.alex", "architect"), ("po.priya", "product_owner")):
             q = pf.ontology.proposal(p["id"])
@@ -253,10 +253,10 @@ def test_postgres_translation_and_migrations():
         "INSERT INTO trace_edges(src,dst,rel) VALUES(%s,%s,%s) ON CONFLICT DO NOTHING"
     up = translate("INSERT OR REPLACE INTO specs(spec_id,version,digest,body) VALUES(?,?,?,?)")
     assert up.endswith("ON CONFLICT (spec_id, version) DO UPDATE SET digest=EXCLUDED.digest, body=EXCLUDED.body")
-    committed = (REPO_ROOT / "migrations/postgres/001_init.sql").read_text()
+    committed = (REPO_ROOT / "migrations/postgres/001_init.sql").read_text(encoding="utf-8")
     assert committed == pg_ddl(), "schema drift: run `python -m factory.cli migrate --emit`"
     assert "AUTOINCREMENT" not in committed and "GENERATED ALWAYS AS IDENTITY" in committed
-    assert "BEFORE UPDATE OR DELETE ON evidence" in (REPO_ROOT / "migrations/postgres/002_evidence_append_only.sql").read_text()
+    assert "BEFORE UPDATE OR DELETE ON evidence" in (REPO_ROOT / "migrations/postgres/002_evidence_append_only.sql").read_text(encoding="utf-8")
 
 
 def test_kubernetes_sandbox_manifest(tmp_path):
@@ -297,5 +297,5 @@ def test_postgres_uses_entra_token_not_password(standin, tmp_path):
     tp = WorkloadTokenProvider(w["client_id"], w["tenant_id"], w["token_file"], w["authority_host"])
     claims = jwt.decode(tp.token(PG_AAD_AUDIENCE), options={"verify_signature": False})
     assert claims["aud"] == PG_AAD_AUDIENCE and claims["azp"] == "factory-workload"
-    src = (REPO_ROOT / "factory/factory.py").read_text()
+    src = (REPO_ROOT / "factory/factory.py").read_text(encoding="utf-8")
     assert "token(PG_AAD_AUDIENCE)" in src and "open_db(st.database_url, self.home / \"factory.db\", pg_pw)" in src

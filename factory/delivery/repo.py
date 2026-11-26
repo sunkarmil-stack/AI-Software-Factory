@@ -11,8 +11,10 @@ import os
 import secrets
 import shutil
 import subprocess
+import tarfile
 from pathlib import Path
 
+from ..core.platform import IS_WINDOWS, TEXT, child_env, rmtree
 from ..core.db import DB, j, unj
 from ..core.evidence import Ledger
 from ..core.util import digest_obj, new_id, now
@@ -31,11 +33,14 @@ exit 0
 """
 
 
+GIT = shutil.which("git") or "git"   # resolved once; on Windows the minimal env may lack git's directory
+
+
 def git(args: list[str], cwd: Path, env: dict | None = None, check: bool = True) -> str:
-    e = {"PATH": "/usr/bin:/bin", "HOME": str(cwd), "GIT_AUTHOR_NAME": "factory", "GIT_AUTHOR_EMAIL": "factory@local",
-         "GIT_COMMITTER_NAME": "factory", "GIT_COMMITTER_EMAIL": "factory@local", "GIT_CONFIG_NOSYSTEM": "1",
-         **(env or {})}
-    r = subprocess.run(["git", *args], cwd=str(cwd), env=e, capture_output=True, text=True)
+    e = child_env({"HOME": str(cwd), "GIT_AUTHOR_NAME": "factory", "GIT_AUTHOR_EMAIL": "factory@local",
+                   "GIT_COMMITTER_NAME": "factory", "GIT_COMMITTER_EMAIL": "factory@local", "GIT_CONFIG_NOSYSTEM": "1",
+                   **(env or {})}, path=None if IS_WINDOWS else "/usr/bin:/bin")
+    r = subprocess.run([GIT, *args], cwd=str(cwd), env=e, capture_output=True, **TEXT)
     if check and r.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed: {r.stderr.strip()}")
     return r.stdout.strip()
@@ -47,8 +52,8 @@ class RepoService:
         self.root = Path(root); self.root.mkdir(parents=True, exist_ok=True)
         tok_file = self.root / ".service-token"
         if not tok_file.exists():
-            tok_file.write_text(secrets.token_hex(16)); tok_file.chmod(0o600)
-        self._token = tok_file.read_text()
+            tok_file.write_text(secrets.token_hex(16), encoding="utf-8"); tok_file.chmod(0o600)
+        self._token = tok_file.read_text(encoding="utf-8")
 
     def bare(self, project: str) -> Path:
         return self.root / f"{project}.git"
@@ -61,22 +66,22 @@ class RepoService:
         if bare.exists():
             return git(["rev-parse", "main"], bare)
         git(["init", "--bare", "-b", "main", str(bare)], self.root)
-        (bare / "hooks" / "pre-receive").write_text(HOOK.replace("{token}", self._token))
+        (bare / "hooks" / "pre-receive").write_text(HOOK.replace("{token}", self._token), encoding="utf-8")
         (bare / "hooks" / "pre-receive").chmod(0o755)
         work = self.root / f".init-{project}"
-        shutil.rmtree(work, ignore_errors=True)
+        rmtree(work, ignore_errors=True)
         shutil.copytree(template, work)
         for p in work.rglob("*"):
             if p.is_file() and p.suffix in {".yaml", ".toml", ".tf"}:
-                p.write_text(p.read_text().replace("SERVICE_NAME", project))
+                p.write_text(p.read_text(encoding="utf-8").replace("SERVICE_NAME", project), encoding="utf-8")
         (work / ".factory").mkdir(exist_ok=True)
-        (work / ".factory" / "project.json").write_text(j(metadata))
+        (work / ".factory" / "project.json").write_text(j(metadata), encoding="utf-8")
         git(["init", "-b", "main"], work)
         git(["add", "-A"], work)
         git(["commit", "-m", f"chore: onboard {project} from template"], work)
         git(["push", str(bare), "main"], work, self._svc_env())
         sha = git(["rev-parse", "HEAD"], work)
-        shutil.rmtree(work)
+        rmtree(work)
         self.ledger.record("repo.created", project, "repo-service", {"sha": sha, "template": template.name}, project)
         return sha
 
@@ -84,17 +89,17 @@ class RepoService:
         """Protected environment (GitOps) repository: only service identities can push to main."""
         bare = Path(bare)
         git(["init", "--bare", "-b", "main", str(bare)], bare.parent)
-        (bare / "hooks" / "pre-receive").write_text(HOOK.replace("{token}", self._token))
+        (bare / "hooks" / "pre-receive").write_text(HOOK.replace("{token}", self._token), encoding="utf-8")
         (bare / "hooks" / "pre-receive").chmod(0o755)
         work = self.root / f".init-{bare.stem}"
-        shutil.rmtree(work, ignore_errors=True)
+        rmtree(work, ignore_errors=True)
         work.mkdir(parents=True)
-        (work / "README.md").write_text("Environment desired state. Written only by the factory release service.\n")
+        (work / "README.md").write_text("Environment desired state. Written only by the factory release service.\n", encoding="utf-8")
         git(["init", "-b", "main"], work)
         git(["add", "-A"], work)
         git(["commit", "-q", "-m", "init environments"], work, self._svc_env("release-service"))
         git(["push", "-q", str(bare), "main"], work, self._svc_env("release-service"))
-        shutil.rmtree(work)
+        rmtree(work)
 
     def clone_to(self, project: str, dest: Path, branch: str = "main") -> Path:
         git(["clone", "-q", "-b", branch, str(self.bare(project)), str(dest)], dest.parent)
@@ -116,8 +121,8 @@ class RepoService:
 
     def raw_push(self, workdir: Path, refspec: str) -> tuple[bool, str]:
         """What an agent could attempt directly from a sandbox shell (used by tests)."""
-        r = subprocess.run(["git", "push", "origin", refspec], cwd=str(workdir), capture_output=True, text=True,
-                           env={"PATH": "/usr/bin:/bin", "HOME": str(workdir)})
+        r = subprocess.run([GIT, "push", "origin", refspec], cwd=str(workdir), capture_output=True, **TEXT,
+                           env=child_env({"HOME": str(workdir)}, path=None if IS_WINDOWS else "/usr/bin:/bin"))
         return r.returncode == 0, r.stderr
 
     def changed_files(self, project: str, base: str, head: str) -> list[str]:
@@ -154,13 +159,13 @@ class RepoService:
         check_review(pr)   # raises if no valid bound engineer approval for head_sha
         check_ci(pr)       # raises if no green trusted CI for head_sha
         work = self.root / f".merge-{pid}"
-        shutil.rmtree(work, ignore_errors=True)
+        rmtree(work, ignore_errors=True)
         self.clone_to(pr["project"], work)
         git(["fetch", "-q", "origin", pr["branch"]], work)
         git(["merge", "-q", "--no-ff", "-m", f"merge {pid}: {pr['title']}", pr["head_sha"]], work, self._svc_env())
         git(["push", "-q", "origin", "main"], work, self._svc_env())
         sha = git(["rev-parse", "HEAD"], work)
-        shutil.rmtree(work)
+        rmtree(work)
         self.db.execute("UPDATE prs SET status='merged', merged_sha=? WHERE id=?", (sha, pid))
         self.ledger.record("pr.merged", pid, "repo-service", {"merged_sha": sha, "head": pr["head_sha"]}, pr["project"])
         return sha
@@ -169,6 +174,7 @@ class RepoService:
         dest.mkdir(parents=True, exist_ok=True)
         tar = dest.parent / f"{dest.name}.src.tar"
         git(["archive", "--format=tar", "-o", str(tar), sha], self.bare(project))
-        subprocess.run(["tar", "-xf", str(tar), "-C", str(dest)], check=True)
+        with tarfile.open(tar) as tf:                      # portable: no `tar` binary needed (Windows)
+            tf.extractall(dest, filter="data")
         tar.unlink()
         return dest

@@ -113,7 +113,7 @@ def facts_for(snap: dict, proposal: dict, conflict_disclosed: bool = False) -> d
 class WealthAdvisoryApp:
     def __init__(self, f, env: str = "nonprod"):
         self.f, self.env = f, env
-        self.cfg = yaml.safe_load((DOMAIN / "project.yaml").read_text())
+        self.cfg = yaml.safe_load((DOMAIN / "project.yaml").read_text(encoding="utf-8"))
         self.copilot = self._agent("advisor-copilot")
         self.reviewer = self._agent("suitability-reviewer")
 
@@ -144,7 +144,7 @@ class WealthAdvisoryApp:
         return snap
 
     def _shelf_codes(self) -> list[str]:
-        book = yaml.safe_load((REPO_ROOT / "samples" / "wealth" / "book.yaml").read_text())
+        book = yaml.safe_load((REPO_ROOT / "samples" / "wealth" / "book.yaml").read_text(encoding="utf-8"))
         return sorted(book["products"])   # synthetic shelf listing; production: product_shelf list endpoint
 
     def prepare_review(self, advisor: str, account_id: str) -> dict:
@@ -220,7 +220,7 @@ class WealthAdvisoryApp:
 
 # ---------------------------------------------------------------- evaluation (Pipeline C for the product agents)
 def evaluate(f, app: WealthAdvisoryApp) -> dict:
-    suite = yaml.safe_load((DOMAIN / "evals.yaml").read_text())
+    suite = yaml.safe_load((DOMAIN / "evals.yaml").read_text(encoding="utf-8"))
     results: dict[str, list[bool]] = {}
     for case in suite["cases"]:
         ok = False

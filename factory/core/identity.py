@@ -73,7 +73,7 @@ class Directory:
     @classmethod
     def load(cls, path: Path) -> "Directory":
         d = cls()
-        for row in yaml.safe_load(Path(path).read_text())["principals"]:
+        for row in yaml.safe_load(Path(path).read_text(encoding="utf-8"))["principals"]:
             d.add(Principal(id=row["id"], kind=row["kind"], roles=set(row.get("roles", [])),
                             tenants=set(row.get("tenants", [])), grants=list(row.get("grants", [])),
                             token=row.get("token")))

@@ -2,7 +2,8 @@
 
 Backends:
   container : docker run --network none --read-only --cap-drop ALL --user 65534 ... (if a daemon is reachable)
-  process   : scrubbed env, rlimits, blackholed proxy, separate working dir. DEV ONLY.
+  process   : scrubbed env, rlimits (POSIX only), blackholed proxy, separate working dir. DEV ONLY.
+              On Windows there are no rlimits or process sessions: only the timeout and scrubbed env apply.
 
 A namespace or plain process is not an adequate boundary for hostile code (REQ 044); the
 factory therefore refuses to run code for projects at risk tier >= 2 in the `process`
@@ -12,7 +13,6 @@ Production deployments should use gVisor/Kata-class runtimes (Phase 0 isolation 
 from __future__ import annotations
 
 import os
-import resource
 import shutil
 import subprocess
 import sys
@@ -20,14 +20,21 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..core.evidence import Ledger, redact
+from ..core.platform import IS_WINDOWS, TEXT, child_env, rmtree
 from ..core.util import new_id
 
-SAFE_ENV = {"PATH": "/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8", "PYTHONDONTWRITEBYTECODE": "1",
-            "http_proxy": "http://127.0.0.1:9", "https_proxy": "http://127.0.0.1:9",
-            "HTTP_PROXY": "http://127.0.0.1:9", "HTTPS_PROXY": "http://127.0.0.1:9", "no_proxy": ""}
+try:                                   # Unix-only standard library module
+    import resource
+except ImportError:                    # Windows
+    resource = None
+
+SAFE_ENV = child_env({"PYTHONDONTWRITEBYTECODE": "1",
+                      "http_proxy": "http://127.0.0.1:9", "https_proxy": "http://127.0.0.1:9",
+                      "HTTP_PROXY": "http://127.0.0.1:9", "HTTPS_PROXY": "http://127.0.0.1:9", "no_proxy": ""})
 
 
 def _limits():
+    """POSIX only: CPU, file-size and memory limits, and a new session so the child cannot signal the factory."""
     resource.setrlimit(resource.RLIMIT_CPU, (120, 120))
     resource.setrlimit(resource.RLIMIT_FSIZE, (64 * 2**20, 64 * 2**20))
     try:
@@ -64,6 +71,8 @@ class Sandbox:
 
     def env(self) -> dict:
         e = dict(SAFE_ENV, HOME=str(self.dir), PYTHONPATH=str(self.work))
+        if IS_WINDOWS:
+            e.update(USERPROFILE=str(self.dir), TEMP=str(self.dir), TMP=str(self.dir))
         assert not any(k.startswith(("FACTORY_", "AZURE_", "ANTHROPIC_", "AWS_")) for k in e)
         return e
 
@@ -73,10 +82,12 @@ class Sandbox:
                     "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--user", "65534:65534",
                     "--memory", "1g", "--pids-limit", "256", "-v", f"{self.work}:/work", "-w", "/work",
                     self.image or "python:3.12-slim", *cmd]
-            r = subprocess.run(full, capture_output=True, text=True, timeout=timeout)
+            r = subprocess.run(full, capture_output=True, timeout=timeout, **TEXT)
         else:
-            r = subprocess.run(cmd, cwd=str(self.work), env=self.env(), capture_output=True, text=True,
-                               timeout=timeout, preexec_fn=_limits)
+            isolation = ({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if IS_WINDOWS
+                         else {"preexec_fn": _limits})
+            r = subprocess.run(cmd, cwd=str(self.work), env=self.env(), capture_output=True, timeout=timeout,
+                               **TEXT, **isolation)
         self.ledger.record("sandbox.exec", self.id, "sandbox-service",
                            {"cmd": cmd[:6], "code": r.returncode, "stderr_tail": redact(r.stderr[-400:])}, self.project)
         return RunResult(r.returncode, r.stdout, r.stderr)
@@ -85,7 +96,7 @@ class Sandbox:
         return self.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *paths])
 
     def destroy(self) -> None:
-        shutil.rmtree(self.dir, ignore_errors=True)
+        rmtree(self.dir, ignore_errors=True)
         self.ledger.record("sandbox.destroyed", self.id, "sandbox-service", {}, self.project)
 
 
@@ -156,7 +167,7 @@ class KubernetesSandbox(Sandbox):
         import json as _json
         m = self.job_manifest(cmd, timeout)
         name = m["metadata"]["name"]
-        apply = subprocess.run(["kubectl", "apply", "-f", "-"], input=_json.dumps(m), capture_output=True, text=True)
+        apply = subprocess.run(["kubectl", "apply", "-f", "-"], input=_json.dumps(m), capture_output=True, **TEXT)
         if apply.returncode != 0:
             return RunResult(apply.returncode, "", apply.stderr)
         subprocess.run(["kubectl", "-n", self.namespace, "wait", "--for=condition=complete", f"job/{name}",

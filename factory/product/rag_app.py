@@ -22,7 +22,7 @@ PROJECT, TENANT = "ops-assistant", "retail"
 
 
 def load_corpus(f, path: Path | None = None) -> int:
-    docs = yaml.safe_load((path or REPO_ROOT / "samples" / "rag" / "corpus.yaml").read_text())["documents"]
+    docs = yaml.safe_load((path or REPO_ROOT / "samples" / "rag" / "corpus.yaml").read_text(encoding="utf-8"))["documents"]
     for d in docs:
         f.retrieval.ingest(d["id"], d["tenant"], d["project"], d["acl"], d["classification"], d["title"], d["text"], d["source"])
     return len(docs)

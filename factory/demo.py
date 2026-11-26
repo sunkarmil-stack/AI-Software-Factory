@@ -17,7 +17,7 @@ OWNERS = {"product_owner": "po.priya", "architect": "arch.alex", "engineer": "en
 
 
 def load_spec(version: int = 1) -> dict:
-    return yaml.safe_load((REPO_ROOT / "samples" / "specs" / f"accounts-api.v{version}.yaml").read_text())
+    return yaml.safe_load((REPO_ROOT / "samples" / "specs" / f"accounts-api.v{version}.yaml").read_text(encoding="utf-8"))
 
 
 def spec_v2(v1: dict) -> dict:

@@ -121,7 +121,7 @@ def build_impls(f) -> dict[str, ToolImpl]:
     # ---- wealth-advisory systems of record (synthetic book; production reaches them via the AI gateway)
     import yaml as _yaml
     from .core.util import REPO_ROOT
-    book = _yaml.safe_load((REPO_ROOT / "samples" / "wealth" / "book.yaml").read_text())
+    book = _yaml.safe_load((REPO_ROOT / "samples" / "wealth" / "book.yaml").read_text(encoding="utf-8"))
 
     def _account(args, ctx):
         if ctx.tenant != "wealth" or args["account_id"] not in book["accounts"]:
@@ -217,7 +217,7 @@ def build_impls(f) -> dict[str, ToolImpl]:
         return {"filing_id": r["filing_id"], "receipt": r["receipt"], "status": "accepted"} if r else None
 
     # ---- retail account risk systems of record (synthetic)
-    risk_book = _yaml.safe_load((REPO_ROOT / "samples" / "retail_risk" / "book.yaml").read_text())
+    risk_book = _yaml.safe_load((REPO_ROOT / "samples" / "retail_risk" / "book.yaml").read_text(encoding="utf-8"))
 
     def _risk_account(args, ctx):
         if ctx.tenant != "retail" or args["account_id"] not in risk_book["accounts"]:

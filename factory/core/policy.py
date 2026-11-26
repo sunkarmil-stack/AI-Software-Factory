@@ -68,7 +68,7 @@ class PolicyEngine:
 
     @classmethod
     def load(cls, path: Path) -> "PolicyEngine":
-        return cls(yaml.safe_load(Path(path).read_text()))
+        return cls(yaml.safe_load(Path(path).read_text(encoding="utf-8")))
 
     def classify(self, req: dict) -> int:
         tier = 0

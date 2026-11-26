@@ -15,7 +15,7 @@ from factory.demo import load_spec
 from factory.ontology.discovery import discover, extract
 from factory.ontology.registry import OntologyError
 
-GLOSSARY = [{"id": "glossary.md", "text": (REPO_ROOT / "samples/ontology/glossary.md").read_text()}]
+GLOSSARY = [{"id": "glossary.md", "text": (REPO_ROOT / "samples/ontology/glossary.md").read_text(encoding="utf-8")}]
 PROV = {"source": "test", "evidence": "quoted evidence"}
 
 

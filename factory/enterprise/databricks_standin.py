@@ -30,7 +30,7 @@ class DatabricksUCStandIn:
     fingerprint = FINGERPRINT
 
     def __init__(self, path: Path | None = None):
-        self.doc = yaml.safe_load(Path(path or REPO_ROOT / "samples" / "osfi" / "lakehouse.yaml").read_text())
+        self.doc = yaml.safe_load(Path(path or REPO_ROOT / "samples" / "osfi" / "lakehouse.yaml").read_text(encoding="utf-8"))
         self.calls: list[dict] = []
         self.schema_override: dict[str, dict] = {}      # simulate a server-side tool change (rug pull)
 

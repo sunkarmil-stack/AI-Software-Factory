@@ -55,7 +55,7 @@ class AgentResult:
 
 
 def load_manifest(path: Path) -> dict:
-    m = yaml.safe_load(Path(path).read_text())
+    m = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     missing = [f for f in REQUIRED_AGENT_MANIFEST if f not in m]
     if missing:
         raise AgentManifestError(f"agent manifest {path} missing {missing}")
@@ -71,7 +71,7 @@ class Agent:
         pfile = factory.catalog / "prompts" / f"{pid}@{pv}.yaml"
         if not pfile.exists():
             pfile = factory.catalog / "prompts" / f"{pid}.yaml"
-        self.prompt = yaml.safe_load(pfile.read_text())
+        self.prompt = yaml.safe_load(pfile.read_text(encoding="utf-8"))
         if str(self.prompt["version"]) != str(manifest["prompt"]["version"]):
             raise AgentManifestError(f"prompt {manifest['prompt']['id']} version drift: pinned "
                                      f"{manifest['prompt']['version']} found {self.prompt['version']}")

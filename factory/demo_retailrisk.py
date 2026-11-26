@@ -51,7 +51,7 @@ def main(home: str | None = None) -> Factory:
     say(f"domain pack: project {out['project']} (tenant retail, risk tier 3); {len(out['proposals'])} ontology "
         f"proposals approved by owners; {len(f.ontology.proposals('pending'))} pending")
 
-    spec = yaml.safe_load((REPO_ROOT / "samples" / "specs" / "risk-cases-api.v1.yaml").read_text())
+    spec = yaml.safe_load((REPO_ROOT / "samples" / "specs" / "risk-cases-api.v1.yaml").read_text(encoding="utf-8"))
     run_spec(f, spec, tenant="retail", po="po.priya")
     d = run_delivery(f, spec, tenant="retail")
     r = run_release(f, spec, d["pr_id"], tenant="retail")

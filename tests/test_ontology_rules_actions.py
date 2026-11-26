@@ -12,7 +12,7 @@ from factory.ontology import rules as R
 from factory.ontology.actions import ActionDenied
 from factory.ontology.discovery import discover
 
-GLOSSARY = [{"id": "glossary.md", "text": (REPO_ROOT / "samples/ontology/glossary.md").read_text()}]
+GLOSSARY = [{"id": "glossary.md", "text": (REPO_ROOT / "samples/ontology/glossary.md").read_text(encoding="utf-8")}]
 PROV = {"source": "ops-policy", "evidence": "quoted policy sentence"}
 SUBJECT = {"id": "acc-100", "tenant": "retail"}
 APPROVERS = (("onto.olivia", "ontology_owner"), ("arch.alex", "architect"), ("po.priya", "product_owner"),

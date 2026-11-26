@@ -30,7 +30,7 @@ ACCUSATORY_RE = re.compile(r"\b(fraudster|committed fraud|is laundering|criminal
 
 
 def scoring() -> dict:
-    return yaml.safe_load((DOMAIN / "scoring.yaml").read_text())
+    return yaml.safe_load((DOMAIN / "scoring.yaml").read_text(encoding="utf-8"))
 
 
 def _ts(s: str) -> dt.datetime:
@@ -269,7 +269,7 @@ class RetailRiskApp:
 
 # ---------------------------------------------------------------- evaluation (Pipeline C for the product agents)
 def evaluate(f, app: RetailRiskApp) -> dict:
-    suite = yaml.safe_load((DOMAIN / "evals.yaml").read_text())
+    suite = yaml.safe_load((DOMAIN / "evals.yaml").read_text(encoding="utf-8"))
     results: dict[str, list[bool]] = {}
     alerts = {(a["account_id"], a["type"]): a for a in app.monitor(["acc-100", "acc-101", "acc-102", "acc-103"])}
     for case in suite["cases"]:

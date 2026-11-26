@@ -32,19 +32,19 @@ def export(spec: dict, root: Path) -> dict:
             lines += [f"#### Scenario: {ac.get('name', ac['id'])}", f"<!-- id: {ac['id']} -->",
                       f"- **GIVEN** {ac['given']}", f"- **WHEN** {ac['when']}", f"- **THEN** {ac['then']}",
                       "", "```json factory-check", json.dumps(ac["check"], sort_keys=True), "```", ""]
-    (d / "spec.md").write_text("\n".join(lines))
+    (d / "spec.md").write_text("\n".join(lines), encoding="utf-8")
     sidecar = {k: v for k, v in spec.items() if k not in NATIVE}
-    (root / "openspec" / "factory.yaml").write_text(yaml.safe_dump(sidecar, sort_keys=True))
+    (root / "openspec" / "factory.yaml").write_text(yaml.safe_dump(sidecar, sort_keys=True), encoding="utf-8")
     return {"capability": cap, "unsupported_native": sorted(sidecar.keys())}
 
 
 def import_(root: Path) -> tuple[dict, dict]:
     root = Path(root) / "openspec"
-    sidecar = yaml.safe_load((root / "factory.yaml").read_text())
+    sidecar = yaml.safe_load((root / "factory.yaml").read_text(encoding="utf-8"))
     md_files = sorted((root / "specs").glob("*/spec.md"))
     if len(md_files) != 1:
         raise ValueError("adapter expects exactly one capability per normalized spec")
-    text = md_files[0].read_text()
+    text = md_files[0].read_text(encoding="utf-8")
     title = re.search(r"^# (.+)$", text, re.M).group(1)
     reqs, cur_r, cur_ac = [], None, None
     lines = text.splitlines()
