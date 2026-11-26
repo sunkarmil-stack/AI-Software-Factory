@@ -1,0 +1,69 @@
+name: advice_records
+version: 1.0.0
+owner: wealth-compliance
+description: 'Books and records for advice: every recommendation with rationale, facts,
+  approvals and snapshot id.'
+actions:
+  record:
+    side_effect: write
+    reversible: true
+    data_class: confidential
+    input_schema:
+      type: object
+      required:
+      - subject_id
+      - product_code
+      - side
+      - amount_cents
+      - rationale
+      - snapshot_id
+      - tenant
+      properties:
+        subject_id:
+          type: string
+        product_code:
+          type: string
+        side:
+          type: string
+        amount_cents:
+          type: integer
+        rationale:
+          type: string
+        snapshot_id:
+          type: string
+        tenant:
+          type: string
+    output_schema:
+      type: object
+      required:
+      - recommendation_id
+      - status
+resource_scope: '{tenant}/ontology'
+data_classes:
+- confidential
+authentication: workload-identity
+authorization: identity grant + tenant + resource + policy tier
+circuit:
+  threshold: 3
+  cooldown_s: 10
+max_concurrency: 8
+timeout_s: 10
+retry:
+  max: 2
+  retry_on:
+  - timeout
+  - '503'
+idempotency:
+  required: true
+  key: operation id bound to payload digest
+endpoint:
+  via: ai_gateway
+  api: advice-records
+  actions:
+    record:
+      method: POST
+      path: /recommendations
+  reconcile:
+    method: GET
+    path: /recommendations
+    query: operation_id

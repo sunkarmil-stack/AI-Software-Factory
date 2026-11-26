@@ -1,0 +1,19 @@
+environment          = "prod"
+location             = "canadacentral"
+aks_admin_group_ids  = ["00000000-0000-0000-0000-000000000000"] # Entra group: AI Platform SRE
+apim_publisher_email = "ai-platform@example.com"
+create_apim          = false # use the enterprise-owned shared AI gateway
+existing_apim_id     = "/subscriptions/<sub>/resourceGroups/rg-ent-aigw/providers/Microsoft.ApiManagement/service/apim-ent-aigw"
+existing_apim_principal_id = "<apim-managed-identity-object-id>"
+
+model_backends = {
+  "claude-delivery" = { url = "https://<foundry>.services.ai.azure.com/anthropic" }
+  "gpt-delivery"    = { url = "https://<aoai>.openai.azure.com/openai" }
+  "rag-assistant"   = { url = "https://<aoai>.openai.azure.com/openai" }
+}
+
+enterprise_apis = {
+  deposits = { url = "https://deposits.internal.example.com", audience = "api://deposits", calls_per_minute = 120, write_methods = ["POST"] }
+  payments = { url = "https://payments.internal.example.com", audience = "api://payments", calls_per_minute = 60, write_methods = ["POST"] }
+  "data-platform" = { url = "https://data.internal.example.com", audience = "api://data-platform", calls_per_minute = 300, write_methods = [] }
+}

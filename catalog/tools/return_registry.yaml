@@ -1,0 +1,67 @@
+name: return_registry
+version: 1.0.0
+owner: regulatory-reporting
+description: Firm's book of record for certified regulatory returns (package digest,
+  snapshot, approvals).
+actions:
+  record:
+    side_effect: write
+    reversible: true
+    data_class: confidential
+    input_schema:
+      type: object
+      required:
+      - subject_id
+      - return_code
+      - period_end
+      - package_digest
+      - snapshot_id
+      - tenant
+      properties:
+        subject_id:
+          type: string
+        return_code:
+          type: string
+        period_end:
+          type: string
+        package_digest:
+          type: string
+        snapshot_id:
+          type: string
+        tenant:
+          type: string
+    output_schema:
+      type: object
+      required:
+      - certification_id
+      - status
+resource_scope: '{tenant}/ontology'
+data_classes:
+- confidential
+authentication: workload-identity (Databricks OAuth via the enterprise AI gateway)
+authorization: identity grant + tenant + resource + policy tier; Unity Catalog permissions
+  enforced again at the source
+circuit:
+  threshold: 3
+  cooldown_s: 10
+max_concurrency: 4
+timeout_s: 10
+retry:
+  max: 2
+  retry_on:
+  - timeout
+  - '503'
+idempotency:
+  required: true
+  key: operation id bound to payload digest
+endpoint:
+  via: ai_gateway
+  api: return-registry
+  actions:
+    record:
+      method: POST
+      path: /certifications
+  reconcile:
+    method: GET
+    path: /certifications
+    query: operation_id

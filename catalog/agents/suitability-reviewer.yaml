@@ -1,0 +1,63 @@
+id: suitability-reviewer
+version: 1.0.0
+owner: wealth-digital-team
+description: Drafts suitability findings and rationale for a proposed recommendation;
+  cannot approve.
+framework:
+  name: factory-native
+  version: 0.1.0
+  alternative_spike: langgraph
+runtime:
+  python: '3.12'
+  worker_type: agent-worker
+skills:
+- name: suitability-assessment
+  version: 1.0.0
+model:
+  deployment: advisory-copilot
+  purpose: product.suitability
+tools:
+- kyc:get@wealth/*
+- product_shelf:get@wealth/*
+state_schema:
+  type: object
+  properties:
+    task:
+      type: object
+    result:
+      type: object
+memory_policy:
+  transient: per-task, cleared at completion
+  persistent: none (systems of record are the source)
+budgets:
+  max_model_tokens: 60000
+  max_tool_calls: 10
+  max_cost_usd: 2.0
+termination:
+  on_ambiguity: blocked
+  on_budget: stop_and_escalate
+  max_repairs: 1
+evaluation_suite: catalog/domains/wealth-advisory/evals.yaml
+deployment_class: product
+prompt:
+  id: suitability-reviewer
+  version: 1.0.0
+task_kind: wealth.suitability
+payload_schema:
+  type: object
+  required:
+  - findings
+  - rationale_draft
+  - suggested_route
+  properties:
+    findings:
+      type: array
+      items:
+        type: string
+    rationale_draft:
+      type: string
+    suggested_route:
+      enum:
+      - proceed
+      - escalate
+      - do_not_proceed

@@ -1,0 +1,43 @@
+# Synthetic Databricks lakehouse (Unity Catalog `regrep`, schema `gold`) for nonproduction.
+# Amounts in CAD millions. Each table has Delta-style versions; readers pin a version so a filed
+# return can be reproduced exactly (time travel: VERSION AS OF).
+entity: {id: BANK-CONSOL, legal_name: Example Bank (consolidated), dsib: true, hla_surcharge_pct: 1.0}
+tables:
+  regrep.gold.capital_components:
+    owner: capital-data-team
+    versions:
+      41:
+        "2026-07-31": {cet1_before_adjustments: 62000, cet1_regulatory_adjustments: -9000, at1_capital: 7500, tier1_reported_car: 60500}
+        "2026-10-31": {cet1_before_adjustments: 64100, cet1_regulatory_adjustments: -9300, at1_capital: 7500, tier1_reported_car: 62300}
+  regrep.gold.leverage_exposures:
+    owner: capital-data-team
+    versions:
+      58:
+        "2026-07-31": {on_balance_sheet: 1180000, derivatives: 52000, securities_financing: 98000, off_balance_sheet_after_ccf: 85000, tier1_deductions: -9000}
+        "2026-10-31": {on_balance_sheet: 1215000, derivatives: 61000, securities_financing: 101000, off_balance_sheet_after_ccf: 88000, tier1_deductions: -9300}
+  regrep.gold.gl_balances:
+    owner: finance-gl-team
+    versions:
+      203:
+        "2026-07-31": {total_assets_in_scope: 1180300}
+        "2026-09-30": {total_assets_in_scope: 1199000}
+        "2026-10-31": {total_assets_in_scope: 1215400}
+  regrep.gold.hqla:
+    owner: treasury-data-team
+    versions:
+      17:
+        "2026-09-30": {level1: 205000, level2a: 39000, level2b: 11500}
+        "2026-10-31": {level1: 210000, level2a: 40000}            # level2b segment failed to load
+  regrep.gold.cash_flows_30d:
+    owner: treasury-data-team
+    versions:
+      22:
+        "2026-09-30": {retail_deposits: [590000, 0.05], wholesale_unsecured: [260000, 0.40], secured_funding: [148000, 0.25], committed_facilities: [198000, 0.30], inflows: 58000}
+        "2026-10-31": {retail_deposits: [600000, 0.05], wholesale_unsecured: [300000, 0.40], secured_funding: [150000, 0.25], committed_facilities: [200000, 0.30], inflows: 60000}
+  regrep.gold.load_log:
+    owner: data-platform
+    versions:
+      90:
+        "2026-07-31": {capital_components: [complete, "2026-08-04"], leverage_exposures: [complete, "2026-08-04"], gl_balances: [complete, "2026-08-03"]}
+        "2026-09-30": {hqla: [complete, "2026-10-02"], cash_flows_30d: [complete, "2026-10-02"], gl_balances: [complete, "2026-10-02"]}
+        "2026-10-31": {capital_components: [complete, "2026-11-04"], leverage_exposures: [complete, "2026-11-04"], gl_balances: [complete, "2026-11-03"], hqla: [partial, "2026-11-03"], cash_flows_30d: [complete, "2026-11-03"]}

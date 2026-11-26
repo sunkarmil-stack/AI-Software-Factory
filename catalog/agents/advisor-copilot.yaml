@@ -1,0 +1,78 @@
+id: advisor-copilot
+version: 1.0.0
+owner: wealth-digital-team
+description: Prepares client review notes and draft rebalancing proposals from the
+  calculation snapshot; never executes.
+framework:
+  name: factory-native
+  version: 0.1.0
+  alternative_spike: langgraph
+runtime:
+  python: '3.12'
+  worker_type: agent-worker
+skills:
+- name: suitability-assessment
+  version: 1.0.0
+model:
+  deployment: advisory-copilot
+  purpose: product.advisory
+tools:
+- portfolio:get_holdings@wealth/*
+- market_data:quotes@wealth/*
+- kyc:get@wealth/*
+- product_shelf:get@wealth/*
+state_schema:
+  type: object
+  properties:
+    task:
+      type: object
+    result:
+      type: object
+memory_policy:
+  transient: per-task, cleared at completion
+  persistent: none (systems of record are the source)
+budgets:
+  max_model_tokens: 60000
+  max_tool_calls: 10
+  max_cost_usd: 2.0
+termination:
+  on_ambiguity: blocked
+  on_budget: stop_and_escalate
+  max_repairs: 1
+evaluation_suite: catalog/domains/wealth-advisory/evals.yaml
+deployment_class: product
+prompt:
+  id: advisor-copilot
+  version: 1.0.0
+task_kind: wealth.review
+payload_schema:
+  type: object
+  required:
+  - review_notes
+  - proposals
+  - snapshot_id
+  properties:
+    review_notes:
+      type: string
+    snapshot_id:
+      type: string
+    proposals:
+      type: array
+      items:
+        type: object
+        required:
+        - product_code
+        - side
+        - amount_cents
+        - basis
+        properties:
+          product_code:
+            type: string
+          side:
+            enum:
+            - buy
+            - sell
+          amount_cents:
+            type: integer
+          basis:
+            type: string

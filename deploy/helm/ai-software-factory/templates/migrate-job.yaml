@@ -1,0 +1,34 @@
+# Schema migrations run before every install/upgrade as the migrate identity (schema owner).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: factory-migrate-{{ .Release.Revision }}
+  labels: {{- include "asf.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: migrate
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: factory-migrate
+      restartPolicy: Never
+      {{- include "asf.podSecurity" . | nindent 6 }}
+      containers:
+        - name: migrate
+          image: {{ include "asf.image" . }}
+          args: ["migrate", "--apply"]
+          env: {{- include "asf.env" . | nindent 12 }}
+          {{- include "asf.containerSecurity" . | nindent 10 }}
+          volumeMounts:
+            - { name: config, mountPath: /etc/factory, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: config, configMap: { name: factory-config } }
+        - { name: tmp, emptyDir: {} }

@@ -1,0 +1,61 @@
+id: rag-assistant
+version: 1.0.0
+owner: ai-platform-team
+description: Production RAG agent with read-only tools and a persistent human review
+  workflow.
+framework:
+  name: factory-native
+  version: 0.1.0
+  alternative_spike: langgraph
+runtime:
+  python: '3.12'
+  worker_type: agent-worker
+skills:
+- name: rag-evaluation
+  version: 1.0.0
+model:
+  deployment: product-rag
+  purpose: product.rag
+tools:
+- kb:search@retail/*
+- review_queue:submit@retail/*
+state_schema:
+  type: object
+  properties:
+    task:
+      type: object
+    result:
+      type: object
+memory_policy:
+  transient: per-task, cleared at completion
+  persistent: none (corpus is the knowledge source)
+budgets:
+  max_model_tokens: 60000
+  max_tool_calls: 20
+  max_cost_usd: 2.0
+termination:
+  on_ambiguity: blocked
+  on_budget: stop_and_escalate
+  max_repairs: 1
+evaluation_suite: evals/rag-assistant.yaml
+deployment_class: product
+prompt:
+  id: rag-assistant
+  version: 1.0.0
+task_kind: rag.answer
+payload_schema:
+  type: object
+  required:
+  - answer
+  - citations
+  - confidence
+  - needs_review
+  properties:
+    answer:
+      type: string
+    citations:
+      type: array
+    confidence:
+      type: number
+    needs_review:
+      type: boolean

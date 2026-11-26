@@ -1,0 +1,55 @@
+name: payments
+version: 1.0.0
+owner: payments-team
+actions:
+  ledger_write:
+    side_effect: consequential
+    input_schema:
+      type: object
+      required:
+      - account
+      - amount_cents
+      properties:
+        account: &id001
+          type: string
+        amount_cents:
+          type: integer
+        tenant: *id001
+    output_schema:
+      type: object
+      required:
+      - ledger_id
+      - status
+      properties: {}
+    reversible: false
+    data_class: confidential
+resource_scope: '{tenant}/{project}'
+data_classes:
+- confidential
+authentication: workload-identity
+authorization: identity grant + tenant + resource + policy tier
+timeout_s: 30
+retry:
+  max: 2
+  retry_on:
+  - timeout
+  - '429'
+  - '503'
+idempotency:
+  required: true
+  key: operation id bound to payload digest
+max_concurrency: 4
+circuit:
+  threshold: 3
+  cooldown_s: 10
+endpoint:
+  via: ai_gateway
+  api: payments
+  actions:
+    ledger_write:
+      method: POST
+      path: /ledger
+  reconcile:
+    method: GET
+    path: /ledger
+    query: operation_id

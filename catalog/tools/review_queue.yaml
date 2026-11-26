@@ -1,0 +1,42 @@
+name: review_queue
+version: 1.0.0
+owner: ai-platform-team
+actions:
+  submit:
+    side_effect: write
+    input_schema:
+      type: object
+      required:
+      - question
+      - draft
+      properties:
+        question: &id001
+          type: string
+        draft: *id001
+        reason: *id001
+    output_schema:
+      type: object
+      required:
+      - id
+      properties: {}
+    reversible: true
+resource_scope: '{tenant}/{project}'
+data_classes:
+- confidential
+authentication: workload-identity
+authorization: identity grant + tenant + resource + policy tier
+timeout_s: 30
+retry:
+  max: 2
+  retry_on:
+  - timeout
+  - '429'
+  - '503'
+idempotency:
+  required: false
+  key: operation id bound to payload digest
+max_concurrency: 4
+circuit:
+  threshold: 3
+  cooldown_s: 10
+internal: true

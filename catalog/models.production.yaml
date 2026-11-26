@@ -1,0 +1,100 @@
+egress_allowlist: []
+note: 'Production catalog: every deployment is reached through the enterprise AI gateway
+  (provider ai_gateway). `model` is the gateway''s published model alias, not a vendor
+  endpoint.'
+deployments:
+- id: delivery-default
+  provider: ai_gateway
+  model: claude-delivery
+  revision: gateway-alias:claude-delivery
+  approved_uses:
+  - delivery.*
+  data_classes:
+  - public
+  - internal
+  cost_per_1k_in: 0.003
+  cost_per_1k_out: 0.015
+  rpm_per_project: 600
+  approved_fallbacks:
+  - delivery-fallback
+  eval_status: approved-by-model-owner
+- id: delivery-fallback
+  provider: ai_gateway
+  model: gpt-delivery
+  revision: gateway-alias:gpt-delivery
+  approved_uses:
+  - delivery.*
+  data_classes:
+  - public
+  - internal
+  cost_per_1k_in: 0.0025
+  cost_per_1k_out: 0.01
+  rpm_per_project: 600
+  fallback_for:
+  - delivery-default
+  eval_status: approved-by-model-owner
+- id: product-rag
+  provider: ai_gateway
+  model: rag-assistant
+  revision: gateway-alias:rag-assistant
+  approved_uses:
+  - product.rag
+  data_classes:
+  - public
+  - internal
+  - confidential
+  cost_per_1k_in: 0.003
+  cost_per_1k_out: 0.015
+  rpm_per_project: 1200
+  eval_status: approved-by-model-owner
+- id: advisory-copilot
+  provider: ai_gateway
+  model: advisory-copilot
+  revision: gateway-alias:advisory-copilot
+  approved_uses:
+  - product.advisory
+  - product.suitability
+  data_classes:
+  - public
+  - internal
+  - confidential
+  cost_per_1k_in: 0.003
+  cost_per_1k_out: 0.015
+  rpm_per_project: 600
+  eval_status: approved-by-model-owner
+  note: wealth-advisory product route; restricted data (MNPI) is NOT approved until
+    information barriers exist
+- id: regreport-analyst
+  provider: ai_gateway
+  model: regreport-analyst
+  revision: gateway-alias:regreport-analyst
+  approved_uses:
+  - product.regreport.variance
+  - product.regreport.dq
+  data_classes:
+  - public
+  - internal
+  - confidential
+  cost_per_1k_in: 0.003
+  cost_per_1k_out: 0.015
+  rpm_per_project: 300
+  eval_status: approved-by-model-owner
+  note: 'regulatory reporting assistant: drafts commentary and DQ triage only; never
+    computes or files figures'
+- id: risk-analyst
+  provider: ai_gateway
+  model: risk-analyst
+  revision: gateway-alias:risk-analyst
+  approved_uses:
+  - product.risk.fraud
+  - product.risk.credit
+  data_classes:
+  - public
+  - internal
+  - confidential
+  cost_per_1k_in: 0.003
+  cost_per_1k_out: 0.015
+  rpm_per_project: 300
+  eval_status: approved-by-model-owner
+  note: 'risk investigation assistant: summarizes evidence only; never scores, decides
+    or acts'

@@ -1,0 +1,156 @@
+# Wealth advisory ontology. Imported as governed proposals (tier 3 business rules need the
+# ontology owner and product owner; actions need ontology owner and architect, plus security
+# when consequential). Facts used by rules are computed by the deterministic calculation
+# service (factory/product/wealth.py) from systems of record, never by a model.
+source: wealth-compliance-policy-v1
+concepts:
+  - name: InvestmentAccount
+    definition: A registered or non-registered account through which a client holds investments under an investment policy statement.
+    data_class: confidential
+    owner: wealth-data
+    synonyms: [wealth account, portfolio account]
+    attributes:
+      - {name: id, type: identifier, data_class: internal, required: true}
+      - {name: account_type, type: string, data_class: internal, required: true}
+      - {name: client_id, type: identifier, data_class: confidential, required: true}
+    relations:
+      - {type: ownedBy, target: Customer, cardinality: "1"}
+    evidence: "Each client account is governed by an investment policy statement (IPS)."
+  - name: InvestmentProduct
+    definition: A security or fund on the firm's approved product shelf, with its know-your-product risk rating.
+    data_class: internal
+    owner: product-due-diligence
+    synonyms: [shelf product]
+    attributes:
+      - {name: code, type: identifier, data_class: internal, required: true}
+      - {name: risk_rating, type: integer, data_class: internal, required: true}
+      - {name: asset_class, type: string, data_class: internal, required: true}
+      - {name: kyp_reviewed, type: boolean, data_class: internal, required: true}
+      - {name: proprietary, type: boolean, data_class: internal, required: true}
+    relations: []
+    evidence: "Only products that passed know-your-product review may be recommended."
+  - name: Recommendation
+    definition: Advice from a registered advisor to buy or sell a product in a client account, with the facts and rationale that support its suitability.
+    data_class: confidential
+    owner: wealth-compliance
+    synonyms: [advice]
+    attributes:
+      - {name: product_code, type: identifier, data_class: internal, required: true}
+      - {name: side, type: string, data_class: internal, required: true}
+      - {name: amount_cents, type: money, data_class: confidential, required: true}
+      - {name: rationale, type: string, data_class: confidential, required: true}
+      - {name: snapshot_id, type: identifier, data_class: internal, required: true}
+      - {name: product_risk, type: integer, data_class: internal, required: true}
+      - {name: client_risk_tolerance, type: integer, data_class: confidential, required: true}
+      - {name: kyc_age_days, type: integer, data_class: confidential, required: true}
+      - {name: product_approved, type: boolean, data_class: internal, required: true}
+      - {name: post_trade_concentration_pct, type: number, data_class: confidential, required: true}
+      - {name: ips_max_concentration_pct, type: number, data_class: confidential, required: true}
+      - {name: conflict_of_interest, type: boolean, data_class: internal, required: true}
+      - {name: conflict_disclosed, type: boolean, data_class: internal, required: true}
+    relations:
+      - {type: belongsTo, target: InvestmentAccount, cardinality: "1"}
+    evidence: "Every recommendation records the KYC, product and portfolio facts relied on and the advisor's rationale."
+  - name: TradeOrder
+    definition: An instruction to the order management system to buy or sell a product in a client account, executed only from an approved recommendation.
+    data_class: confidential
+    owner: wealth-trading
+    synonyms: [trade]
+    attributes:
+      - {name: recommendation_id, type: identifier, data_class: internal, required: true}
+      - {name: product_code, type: identifier, data_class: internal, required: true}
+      - {name: side, type: string, data_class: internal, required: true}
+      - {name: amount_cents, type: money, data_class: confidential, required: true}
+    relations:
+      - {type: belongsTo, target: InvestmentAccount, cardinality: "1"}
+    evidence: "Orders are placed only to implement an approved recommendation."
+rules:
+  - target: Recommendation
+    evidence: "KYC information must be current before a suitability determination is made."
+    rule: {id: R-RECOMMENDATION-KYC-CURRENT, name: KYC is current, severity: block,
+           expression: "kyc_age_days <= 365",
+           message: "KYC is older than the firm's 365-day limit; update KYC with the client before recommending"}
+  - target: Recommendation
+    evidence: "Only products that passed know-your-product review may be recommended."
+    rule: {id: R-RECOMMENDATION-PRODUCT-APPROVED, name: Product is on the approved shelf, severity: block,
+           expression: "product_approved == True",
+           message: "product has not passed know-your-product review"}
+  - target: Recommendation
+    evidence: "Every recommendation records the advisor's suitability rationale."
+    rule: {id: R-RECOMMENDATION-RATIONALE, name: Suitability rationale recorded, severity: block,
+           expression: "len(rationale) >= 40",
+           message: "a suitability rationale of at least 40 characters is required"}
+  - target: Recommendation
+    evidence: "Recommendations are to buy or to sell."
+    rule: {id: R-RECOMMENDATION-SIDE, name: Side is buy or sell, severity: block,
+           expression: "side in ['buy', 'sell']", message: "side must be buy or sell"}
+  - target: Recommendation
+    evidence: "Material conflicts of interest must be disclosed to the client before the recommendation."
+    rule: {id: R-RECOMMENDATION-CONFLICT-DISCLOSED, name: Conflict disclosed, severity: block,
+           expression: "conflict_disclosed or not conflict_of_interest",
+           message: "a material conflict of interest exists and has not been disclosed to the client"}
+  - target: Recommendation
+    evidence: "A product rated above the client's risk tolerance requires supervisor review."
+    rule: {id: R-RECOMMENDATION-RISK-FIT, name: Product risk within client tolerance, severity: require_approval,
+           approval_role: supervisor, expression: "product_risk <= client_risk_tolerance",
+           message: "product risk exceeds the client's risk tolerance; branch supervisor review required"}
+  - target: Recommendation
+    evidence: "Positions above the IPS concentration limit require portfolio manager approval."
+    rule: {id: R-RECOMMENDATION-CONCENTRATION, name: Within IPS concentration limit, severity: require_approval,
+           approval_role: portfolio_manager, expression: "post_trade_concentration_pct <= ips_max_concentration_pct",
+           message: "post-trade position exceeds the IPS concentration limit; portfolio manager approval required"}
+  - target: Recommendation
+    evidence: "Recommendations of proprietary products are reviewed by Compliance."
+    rule: {id: R-RECOMMENDATION-CONFLICT-REVIEW, name: Conflict reviewed by compliance, severity: require_approval,
+           approval_role: compliance_officer, expression: "not conflict_of_interest",
+           message: "recommendation involves a proprietary product; compliance review required"}
+  - target: TradeOrder
+    evidence: "Orders are placed only to implement an approved recommendation."
+    rule: {id: R-TRADEORDER-HAS-RECOMMENDATION, name: Order implements a recommendation, severity: block,
+           expression: "len(recommendation_id) > 0", message: "orders must reference an executed recommendation"}
+  - target: TradeOrder
+    evidence: "Orders have a positive amount."
+    rule: {id: R-TRADEORDER-AMOUNT, name: Positive amount, severity: block,
+           expression: "amount_cents >= 1", message: "order amount must be positive"}
+actions:
+  - target: InvestmentAccount
+    evidence: "Advisors record recommendations; the record is the firm's book of record for advice."
+    action:
+      name: ProposeRecommendation
+      description: Record a recommendation on an investment account after suitability rules pass or are approved.
+      creates: Recommendation
+      parameters:
+        - {name: product_code, type: identifier, required: true}
+        - {name: side, type: string, required: true}
+        - {name: amount_cents, type: money, required: true}
+        - {name: rationale, type: string, required: true}
+        - {name: snapshot_id, type: identifier, required: true}
+        - {name: product_risk, type: integer, required: true}
+        - {name: client_risk_tolerance, type: integer, required: true}
+        - {name: kyc_age_days, type: integer, required: true}
+        - {name: product_approved, type: boolean, required: true}
+        - {name: post_trade_concentration_pct, type: number, required: true}
+        - {name: ips_max_concentration_pct, type: number, required: true}
+        - {name: conflict_of_interest, type: boolean, required: true}
+        - {name: conflict_disclosed, type: boolean, required: true}
+      preconditions: []
+      side_effect: write
+      reversible: true
+      allowed_roles: [advisor]
+      tool: {name: advice_records, action: record}
+  - target: InvestmentAccount
+    evidence: "Orders are placed only by the advisor, only to implement an approved recommendation."
+    action:
+      name: PlaceTradeOrder
+      description: Send an order to the order management system to implement an executed recommendation.
+      creates: TradeOrder
+      parameters:
+        - {name: recommendation_id, type: identifier, required: true}
+        - {name: product_code, type: identifier, required: true}
+        - {name: side, type: string, required: true}
+        - {name: amount_cents, type: money, required: true}
+      preconditions: []
+      side_effect: consequential
+      reversible: false
+      allowed_roles: [advisor]
+      tool: {name: orders, action: submit}

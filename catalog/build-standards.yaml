@@ -1,0 +1,7 @@
+approved_base_images:
+- registry.internal/python:3.12-slim@sha256:<pinned-in-phase0>
+protected_paths:
+- tests/acceptance/
+- evals/
+- policy/
+- .factory/protected/

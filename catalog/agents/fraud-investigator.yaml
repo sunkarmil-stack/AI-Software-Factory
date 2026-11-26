@@ -1,0 +1,57 @@
+id: fraud-investigator
+version: 1.0.0
+owner: retail-risk
+description: Summarizes fraud and AML alerts from reason codes; suggests a next step;
+  never acts or accuses.
+framework:
+  name: factory-native
+  version: 0.1.0
+  alternative_spike: langgraph
+runtime:
+  python: '3.12'
+  worker_type: agent-worker
+skills:
+- name: risk-investigation
+  version: 1.0.0
+model:
+  deployment: risk-analyst
+  purpose: product.risk.fraud
+tools: []
+state_schema:
+  type: object
+  properties:
+    task:
+      type: object
+    result:
+      type: object
+memory_policy:
+  transient: per-task, cleared at completion
+  persistent: none (case management is the record)
+budgets:
+  max_model_tokens: 30000
+  max_tool_calls: 0
+  max_cost_usd: 0.5
+termination:
+  on_ambiguity: blocked
+  on_budget: stop_and_escalate
+  max_repairs: 1
+evaluation_suite: catalog/domains/retail-account-risk/evals.yaml
+deployment_class: product
+prompt:
+  id: fraud-investigator
+  version: 1.0.0
+task_kind: risk.investigate
+payload_schema:
+  type: object
+  required:
+  - summary
+  - suggested_next_step
+  properties:
+    summary:
+      type: string
+    suggested_next_step:
+      enum:
+      - close_no_action
+      - contact_customer
+      - restrict_and_contact_customer
+      - refer_to_aml_officer

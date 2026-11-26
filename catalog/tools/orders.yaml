@@ -1,0 +1,64 @@
+name: orders
+version: 1.0.0
+owner: wealth-trading
+description: Order management system. Consequential and irreversible once routed to
+  market.
+actions:
+  submit:
+    side_effect: consequential
+    reversible: false
+    data_class: confidential
+    input_schema:
+      type: object
+      required:
+      - subject_id
+      - recommendation_id
+      - product_code
+      - side
+      - amount_cents
+      - tenant
+      properties:
+        subject_id:
+          type: string
+        recommendation_id:
+          type: string
+        product_code:
+          type: string
+        side:
+          type: string
+        amount_cents:
+          type: integer
+        tenant:
+          type: string
+    output_schema:
+      type: object
+      required:
+      - order_id
+      - status
+resource_scope: '{tenant}/ontology'
+data_classes:
+- confidential
+authentication: workload-identity
+authorization: identity grant + tenant + resource + policy tier
+circuit:
+  threshold: 3
+  cooldown_s: 10
+max_concurrency: 4
+timeout_s: 15
+retry:
+  max: 0
+  retry_on: []
+idempotency:
+  required: true
+  key: operation id bound to payload digest
+endpoint:
+  via: ai_gateway
+  api: order-management
+  actions:
+    submit:
+      method: POST
+      path: /orders
+  reconcile:
+    method: GET
+    path: /orders
+    query: operation_id

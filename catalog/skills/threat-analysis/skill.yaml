@@ -1,0 +1,31 @@
+name: threat-analysis
+version: 1.0.0
+owner: ai-platform-team
+description: Produce STRIDE threat scenarios per endpoint and agent tool, with mitigations
+  and test hooks.
+compatibility:
+  factory: '>=0.1'
+  agents: any delivery agent
+inputs:
+- contracts
+- tool contracts
+outputs:
+- threat list
+requested_capabilities:
+- spec.read
+- review.create_item
+data_classes:
+- internal
+- confidential
+side_effects: none
+network: false
+limitations:
+- Advisory; security owns the threat model.
+risk: low
+tests:
+- name: structure
+  expect_sections:
+  - '## Inputs'
+  - '## Outputs'
+  - '## Procedure'
+  - '## Limitations'

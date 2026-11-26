@@ -1,0 +1,42 @@
+<!-- Enterprise AI gateway policy: factory calls to a system of record (deposits/payments/data-platform).
+     Writes must carry Idempotency-Key (the factory sends its op-id); the gateway forwards it so the
+     SoR deduplicates. Revocation returns 403 {"error":{"code":"ApiDisabled"}} -> PermanentError in the factory.
+     STATUS: not deployed in the build environment. -->
+<policies>
+  <inbound>
+    <base />
+    <choose>
+      <when condition="@(&quot;{{factory-enabled}}&quot; != &quot;true&quot; || &quot;{{revoked-apis}}&quot;.Split(',').Contains(context.Api.Path.Split('/').Last()))">
+        <return-response>
+          <set-status code="403" reason="ApiDisabled" />
+          <set-header name="content-type" exists-action="override"><value>application/json</value></set-header>
+          <set-body>{"error":{"code":"ApiDisabled","message":"revoked by enterprise AI gateway"}}</set-body>
+        </return-response>
+      </when>
+    </choose>
+    <validate-azure-ad-token tenant-id="${tenant_id}" header-name="Authorization" failed-validation-httpcode="401">
+      <client-application-ids>
+%{ for id in split(",", allowed_appids) ~}
+        <application-id>${id}</application-id>
+%{ endfor ~}
+      </client-application-ids>
+      <audiences><audience>${gateway_aud}</audience></audiences>
+    </validate-azure-ad-token>
+    <choose>
+      <when condition="@(&quot;${write_methods}&quot;.Split(',').Contains(context.Request.Method) &amp;&amp; !context.Request.Headers.ContainsKey(&quot;Idempotency-Key&quot;))">
+        <return-response>
+          <set-status code="400" reason="IdempotencyKeyRequired" />
+          <set-body>{"error":{"code":"IdempotencyKeyRequired"}}</set-body>
+        </return-response>
+      </when>
+    </choose>
+    <rate-limit-by-key calls="${calls_per_min}" renewal-period="60"
+                       counter-key="@(context.Request.Headers.GetValueOrDefault(&quot;x-factory-workload&quot;, &quot;anon&quot;))" />
+    <!-- strip the factory token; present the gateway's own identity to the system of record -->
+    <set-header name="Authorization" exists-action="delete" />
+    <authentication-managed-identity resource="${backend_aud}" />
+  </inbound>
+  <backend><forward-request timeout="30" /></backend>
+  <outbound><base /></outbound>
+  <on-error><base /></on-error>
+</policies>

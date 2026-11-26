@@ -1,0 +1,47 @@
+name: kyc
+version: 1.0.0
+owner: wealth-compliance
+actions:
+  get:
+    side_effect: read
+    input_schema:
+      type: object
+      required:
+      - account_id
+      properties:
+        account_id:
+          type: string
+    output_schema:
+      type: object
+      required:
+      - client_id
+      - risk_tolerance
+      - kyc_updated_on
+      - time_horizon
+      properties: {}
+resource_scope: '{tenant}/{project}'
+data_classes:
+- confidential
+authentication: workload-identity
+authorization: identity grant + tenant + resource + policy tier
+circuit:
+  threshold: 3
+  cooldown_s: 10
+max_concurrency: 8
+timeout_s: 10
+retry:
+  max: 2
+  retry_on:
+  - timeout
+  - '429'
+  - '503'
+idempotency:
+  required: false
+  key: operation id bound to payload digest
+endpoint:
+  via: ai_gateway
+  api: client-kyc
+  actions:
+    get:
+      method: GET
+      path: /kyc/{account_id}

@@ -1,0 +1,33 @@
+name: suitability-assessment
+version: 1.0.0
+owner: wealth-compliance
+description: Assess a proposed recommendation against KYC, know-your-product, risk
+  fit, concentration and conflicts, using only computed facts.
+compatibility:
+  factory: '>=0.1'
+  agents: wealth product agents
+inputs:
+- calculation snapshot
+- proposed recommendation
+outputs:
+- findings
+- draft rationale
+requested_capabilities:
+- kyc.get
+- product_shelf.get
+data_classes:
+- internal
+- confidential
+side_effects: none
+network: false
+limitations:
+- Findings are advisory; firm rules in the ontology and named approvers decide.
+- Does not assess tax, estate or legal suitability.
+risk: medium
+tests:
+- name: structure
+  expect_sections:
+  - '## Inputs'
+  - '## Outputs'
+  - '## Procedure'
+  - '## Limitations'

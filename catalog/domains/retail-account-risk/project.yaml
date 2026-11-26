@@ -1,0 +1,21 @@
+# Domain pack: retail account risk monitoring (fraud, AML indicators, credit early warning).
+project: retail-account-risk
+tenant: retail
+risk_tier: 3                       # restricts customer accounts and credit limits
+budget_usd: 100.0
+template: fastapi-service
+owners:
+  product_owner: po.priya
+  architect: arch.alex
+  engineer: eng.erin
+  qa_owner: qa.quinn
+  release_owner: rel.rita
+  operator: ops.omar
+spec: samples/specs/risk-cases-api.v1.yaml   # delivered through Pipelines A, B, D
+ontology: ontology.yaml            # proposed through governance, never seeded
+scoring: scoring.yaml              # reviewed scoring configuration (a model under OSFI E-23)
+evals: evals.yaml
+monitor_identity: risk-monitor     # deterministic monitoring runs as a workload, not as an agent
+product_agents: [fraud-investigator, credit-watch-analyst]
+model_route: risk-analyst
+data_classes_allowed: [internal, confidential]

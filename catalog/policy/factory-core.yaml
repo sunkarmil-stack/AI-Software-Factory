@@ -1,0 +1,108 @@
+# Factory core policy — executable, versioned, tested (REQ 047). Changes to this file are
+# protected-control changes and require independent review (REQ 049).
+policy_id: factory-core
+version: 1.4.0
+required_controls:
+  - deny-agent-prod-secrets
+  - deny-agent-default-branch-write
+  - deny-agent-governance-actions
+  - deny-agent-deploy-execute
+  - deny-cross-tenant
+  - deny-not-granted
+  - deny-tier3-without-approval
+  - deny-unapproved-egress
+  - deny-protected-asset-write-by-generator
+
+# Autonomy tier classification (Section 10). The action determines the tier.
+classification:
+  - {when: {side_effect: none}, tier: 0}
+  - {when: {side_effect: read, env: [sandbox, nonprod]}, tier: 0}
+  - {when: {side_effect: write, env: [sandbox, nonprod]}, tier: 1}
+  - {when: {action: [repo.merge, deploy.request, deploy.execute], env: nonprod}, tier: 2}
+  - {when: {side_effect: read, env: prod, data_class: [confidential, restricted]}, tier: 2}
+  - {when: {side_effect: write, env: prod, reversible: true}, tier: 2}
+  - {when: {side_effect: write, env: prod, reversible: {not: true}}, tier: 3}
+  - {when: {side_effect: consequential}, tier: 3}
+  - {when: {data_class: restricted, side_effect: {in: [write, consequential]}}, tier: 3}
+  - {when: {action: [policy.change, permission.grant, approval_rule.change, validation_asset.change]}, tier: 3}
+
+rules:
+  - id: deny-agent-prod-secrets
+    effect: deny
+    when: {actor.kind: agent, action: "secrets.*", env: prod}
+    reason: delivery and product agents never receive production credentials
+  - id: deny-agent-default-branch-write
+    effect: deny
+    when: {actor.kind: agent, action: [repo.push, repo.merge], branch: [main, master, "release/*"]}
+    reason: writing to the protected default branch is denied to agents
+  - id: deny-agent-governance-actions
+    effect: deny
+    when: {actor.kind: agent, action: [policy.change, approval.approve, artifact.sign, release.sign,
+                                       permission.grant, approval_rule.change, tier.select]}
+    reason: agents cannot change policy, approve, sign or grant authority
+  - id: deny-agent-deploy-execute
+    effect: deny
+    when: {actor.kind: agent, action: deploy.execute}
+    reason: agents may only request deployment through the constrained promotion service
+  - id: deny-protected-asset-write-by-generator
+    effect: deny
+    when: {actor.kind: agent, action: validation_asset.change}
+    reason: generating agents cannot edit protected acceptance or evaluation assets
+  - id: deny-cross-tenant
+    effect: deny
+    when: {tenant_match: false}
+    reason: caller tenant does not match resource tenant
+  - id: deny-unregistered-tool
+    effect: deny
+    when: {tool_registered: false}
+    reason: tool is not registered with a complete contract
+  - id: deny-revoked
+    effect: deny
+    when: {revoked: true}
+    reason: capability revoked by an operations control
+  - id: deny-not-granted
+    effect: deny
+    when: {grant: false, actor.kind: [agent, workload]}
+    reason: runtime identity lacks a grant for this tool/action/resource (skills never grant)
+  - id: deny-tier3-without-approval
+    effect: deny
+    when: {tier: 3, approval_valid: {not: true}}
+    reason: tier 3 actions require a valid bound human approval
+  - id: deny-unapproved-egress
+    effect: deny
+    when: {action: "net.*", egress_approved: {not: true}}
+    reason: unrestricted Internet tools are excluded from the MVP
+
+  - id: allow-granted-tool
+    effect: allow
+    when: {grant: true, tenant_match: true, tool_registered: true}
+  - id: allow-human-approval
+    effect: allow
+    when: {actor.kind: human, action: approval.approve}
+  - id: allow-trusted-signers
+    effect: allow
+    when: {actor.kind: workload, actor.id: [ci-builder, release-service], action: [artifact.sign, release.sign, deploy.execute]}
+  - id: allow-human-governed-change
+    effect: allow
+    when: {actor.kind: human, action: [policy.change, approval_rule.change, validation_asset.change], independent_review: true}
+
+obligations:
+  - when: {tier: 2, env: [nonprod, prod]}
+    require: {approval_roles: [release_owner]}
+  - when: {tier: 3}
+    require: {approval_roles: [release_owner], human_approval: true}
+  # production deployments: release owner plus change management (CAB) on the bound change record
+  - when: {action: deploy.execute, env: prod}
+    require: {approval_roles: [release_owner, change_manager], human_approval: true, change_record: true}
+  # wealth-advisory: an order is confirmed by the registered advisor of record (client instruction),
+  # bound to the exact order payload; suitability approvals were already required by ontology rules.
+  - when: {action: orders.submit}
+    require: {approval_roles: [advisor], human_approval: true}
+  # regulatory filing: maker-checker plus senior-officer sign-off, bound to the exact return package
+  - when: {action: regulatory_filing.submit}
+    require: {approval_roles: [reg_reviewer, senior_officer], human_approval: true}
+  # retail risk: the analyst confirms the exact restriction; a credit officer approves each limit reduction
+  - when: {action: account_controls.restrict}
+    require: {approval_roles: [fraud_analyst], human_approval: true}
+  - when: {action: credit_limits.reduce}
+    require: {approval_roles: [credit_officer], human_approval: true}

@@ -1,0 +1,65 @@
+name: credit_limits
+version: 1.0.0
+owner: retail-credit-ops
+description: Schedules a credit limit reduction with customer notice. Treated as irreversible
+  once notice is sent.
+actions:
+  reduce:
+    side_effect: consequential
+    reversible: false
+    data_class: confidential
+    input_schema:
+      type: object
+      required:
+      - subject_id
+      - case_id
+      - current_limit_cents
+      - new_limit_cents
+      - notice_days
+      - tenant
+      properties:
+        subject_id:
+          type: string
+        case_id:
+          type: string
+        current_limit_cents:
+          type: integer
+        new_limit_cents:
+          type: integer
+        notice_days:
+          type: integer
+        tenant:
+          type: string
+    output_schema:
+      type: object
+      required:
+      - change_id
+      - status
+      - effective_date
+resource_scope: '{tenant}/ontology'
+data_classes:
+- confidential
+authentication: workload-identity
+authorization: identity grant + tenant + resource + policy tier
+circuit:
+  threshold: 3
+  cooldown_s: 10
+max_concurrency: 8
+timeout_s: 15
+retry:
+  max: 0
+  retry_on: []
+idempotency:
+  required: true
+  key: operation id bound to payload digest
+endpoint:
+  via: ai_gateway
+  api: credit-limits
+  actions:
+    reduce:
+      method: POST
+      path: /limit-changes
+  reconcile:
+    method: GET
+    path: /limit-changes
+    query: operation_id

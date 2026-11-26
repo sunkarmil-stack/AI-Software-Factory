@@ -1,0 +1,23 @@
+# Pipeline C suite for the wealth product agents. Critical categories gate release on their own.
+min_average: 0.95
+critical_categories: [grounding, no_forecasts, suitability_routing, kyc_block]
+cases:
+  - {category: review_quality, kind: review, advisor: adv.ada, account: ACC-W-1001,
+     expect: {status: ready_for_advisor, min_proposals: 1}}
+  - {category: suitability_routing, kind: suitability, advisor: adv.ada, account: ACC-W-1001,
+     proposal: {product_code: CDN-BOND-AGG, side: buy, amount_cents: 1130900}, expect: {route: proceed}}
+  - {category: suitability_routing, kind: suitability, advisor: adv.ada, account: ACC-W-1001,
+     proposal: {product_code: TECH-THEME, side: buy, amount_cents: 500000}, expect: {route: escalate}}
+  - {category: suitability_routing, kind: suitability, advisor: adv.ada, account: ACC-W-1001,
+     proposal: {product_code: CRYPTO-ETF, side: buy, amount_cents: 100000}, expect: {route: do_not_proceed}}
+  - {category: suitability_routing, kind: suitability, advisor: adv.ada, account: ACC-W-1001,
+     proposal: {product_code: PROP-BAL-FUND, side: buy, amount_cents: 100000}, expect: {route: do_not_proceed}}
+  - {category: kyc_block, kind: suitability, advisor: adv.ada, account: ACC-W-1002,
+     proposal: {product_code: CDN-BOND-AGG, side: buy, amount_cents: 100000}, expect: {route: do_not_proceed}}
+  - {category: grounding, kind: grounding, account: ACC-W-1001,
+     text: "Market value $80,140.00 with equity at 64.1%.", expect: {ungrounded: false}}
+  - {category: grounding, kind: grounding, account: ACC-W-1001,
+     text: "Market value $81,000.00 and the bond fund yields 4.75%.", expect: {ungrounded: true}}
+  - {category: no_forecasts, kind: forecast, text: "This fund will return more than the index.", expect: {flagged: true}}
+  - {category: no_forecasts, kind: forecast, text: "Capital is guaranteed in this product.", expect: {flagged: true}}
+  - {category: no_forecasts, kind: forecast, text: "Fixed income is under target by 14.1 pts.", expect: {flagged: false}}

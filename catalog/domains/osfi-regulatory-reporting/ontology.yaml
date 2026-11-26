@@ -1,0 +1,154 @@
+# OSFI regulatory reporting ontology. Imported as governed proposals: business rules need the
+# ontology owner and product owner; actions need the ontology owner and architect, plus security
+# when consequential. Rule facts are computed by the deterministic reporting engine
+# (factory/product/regreport.py) from pinned lakehouse versions, never by a model.
+source: regulatory-reporting-policy-v1
+concepts:
+  - name: ReportingEntity
+    definition: The consolidated legal entity that files regulatory returns with OSFI.
+    data_class: internal
+    owner: regulatory-reporting
+    synonyms: [filer, reporting institution]
+    attributes:
+      - {name: id, type: identifier, data_class: internal, required: true}
+      - {name: legal_name, type: string, data_class: internal, required: true}
+      - {name: dsib, type: boolean, data_class: internal, required: true}
+      - {name: hla_surcharge_pct, type: number, data_class: internal, required: true}
+    relations: []
+    evidence: "Returns are filed by the consolidated reporting institution."
+  - name: RegulatoryReturn
+    definition: A return type defined by OSFI, such as the Leverage Requirements Return or the LCR return, with its template version, frequency and filing deadline.
+    data_class: internal
+    owner: regulatory-reporting
+    synonyms: [return template]
+    attributes:
+      - {name: code, type: identifier, data_class: internal, required: true}
+      - {name: template_version, type: string, data_class: internal, required: true}
+      - {name: frequency, type: string, data_class: internal, required: true}
+      - {name: filing_days, type: integer, data_class: internal, required: true}
+    relations: []
+    evidence: "Each return has a template version, a frequency and a filing deadline."
+  - name: ReturnCertification
+    definition: The firm's certification that one return for one period is complete, accurate and traceable to pinned source data.
+    data_class: confidential
+    owner: regulatory-reporting
+    synonyms: [certified return]
+    attributes:
+      - {name: return_code, type: identifier, data_class: internal, required: true}
+      - {name: period_end, type: date, data_class: internal, required: true}
+      - {name: template_version, type: string, data_class: internal, required: true}
+      - {name: snapshot_id, type: identifier, data_class: internal, required: true}
+      - {name: package_digest, type: identifier, data_class: internal, required: true}
+      - {name: dq_critical_breaks, type: integer, data_class: internal, required: true}
+      - {name: dq_warnings, type: integer, data_class: internal, required: true}
+      - {name: edit_check_failures, type: integer, data_class: internal, required: true}
+      - {name: unexplained_variances, type: integer, data_class: internal, required: true}
+      - {name: lineage_complete, type: boolean, data_class: internal, required: true}
+      - {name: headline_ratio_pct, type: number, data_class: confidential, required: true}
+      - {name: regulatory_floor_pct, type: number, data_class: internal, required: true}
+      - {name: days_to_deadline, type: integer, data_class: internal, required: true}
+      - {name: is_amendment, type: boolean, data_class: internal, required: true}
+      - {name: amendment_reason, type: string, data_class: internal, required: false}
+    relations:
+      - {type: belongsTo, target: ReportingEntity, cardinality: "1"}
+      - {type: instanceOf, target: RegulatoryReturn, cardinality: "1"}
+    evidence: "A return is certified only when data quality, edit checks, lineage and variance explanations are complete."
+  - name: ReturnFiling
+    definition: Submission of a certified return package to the regulator, with the receipt returned by the filing channel.
+    data_class: confidential
+    owner: regulatory-reporting
+    synonyms: [submission]
+    attributes:
+      - {name: certification_id, type: identifier, data_class: internal, required: true}
+      - {name: return_code, type: identifier, data_class: internal, required: true}
+      - {name: period_end, type: date, data_class: internal, required: true}
+      - {name: package_digest, type: identifier, data_class: internal, required: true}
+    relations:
+      - {type: belongsTo, target: ReportingEntity, cardinality: "1"}
+    evidence: "Only a certified package is filed, byte for byte."
+rules:
+  - target: ReturnCertification
+    evidence: "Critical data-quality breaks must be resolved at source before a return is certified."
+    rule: {id: R-RETURNCERTIFICATION-DQ-CRITICAL, name: No critical data-quality breaks, severity: block,
+           expression: "dq_critical_breaks == 0", message: "critical data-quality breaks are open; fix at source and re-run on the new version"}
+  - target: ReturnCertification
+    evidence: "All validation (edit) checks must pass."
+    rule: {id: R-RETURNCERTIFICATION-EDIT-CHECKS, name: Edit checks pass, severity: block,
+           expression: "edit_check_failures == 0", message: "one or more edit checks failed"}
+  - target: ReturnCertification
+    evidence: "Every reported cell must trace to pinned source data."
+    rule: {id: R-RETURNCERTIFICATION-LINEAGE, name: Cell-level lineage complete, severity: block,
+           expression: "lineage_complete == True", message: "a reported cell has no lineage to a pinned source version"}
+  - target: ReturnCertification
+    evidence: "Every material period-over-period variance has a preparer-confirmed explanation."
+    rule: {id: R-RETURNCERTIFICATION-VARIANCE-EXPLAINED, name: Material variances explained, severity: block,
+           expression: "unexplained_variances == 0", message: "material variances lack a preparer-confirmed explanation"}
+  - target: ReturnCertification
+    evidence: "Amended returns state why they are being refiled."
+    rule: {id: R-RETURNCERTIFICATION-AMENDMENT-REASON, name: Amendment has a reason, severity: block,
+           expression: "not is_amendment or len(amendment_reason) >= 30", message: "an amendment needs a reason of at least 30 characters"}
+  - target: ReturnCertification
+    evidence: "Data-quality warnings are accepted only by the data owner."
+    rule: {id: R-RETURNCERTIFICATION-DQ-WARNINGS, name: Data-quality warnings accepted, severity: require_approval,
+           approval_role: data_owner, expression: "dq_warnings == 0", message: "data-quality warnings need the data owner's acceptance"}
+  - target: ReturnCertification
+    evidence: "A ratio below its regulatory requirement is still filed, and is escalated to a senior officer."
+    rule: {id: R-RETURNCERTIFICATION-BELOW-REQUIREMENT, name: Headline ratio meets requirement, severity: require_approval,
+           approval_role: senior_officer, expression: "headline_ratio_pct >= regulatory_floor_pct",
+           message: "headline ratio is below its regulatory requirement; senior-officer escalation and supervisor notification before filing"}
+  - target: ReturnCertification
+    evidence: "A late filing needs senior-officer approval."
+    rule: {id: R-RETURNCERTIFICATION-LATE, name: Within filing deadline, severity: require_approval,
+           approval_role: senior_officer, expression: "days_to_deadline >= 0", message: "the filing deadline has passed; senior-officer approval required"}
+  - target: ReturnFiling
+    evidence: "Only certified returns are filed."
+    rule: {id: R-RETURNFILING-HAS-CERTIFICATION, name: Filing references a certification, severity: block,
+           expression: "len(certification_id) > 0", message: "filings must reference a certification"}
+  - target: ReturnFiling
+    evidence: "Filings carry the certified package digest."
+    rule: {id: R-RETURNFILING-PACKAGE, name: Package digest present, severity: block,
+           expression: "len(package_digest) > 10", message: "filing must carry the certified package digest"}
+actions:
+  - target: ReportingEntity
+    evidence: "The preparer certifies a return into the firm's book of record for returns."
+    action:
+      name: CertifyReturn
+      description: Certify one return for one period after all reporting rules pass or are approved.
+      creates: ReturnCertification
+      parameters:
+        - {name: return_code, type: identifier, required: true}
+        - {name: period_end, type: date, required: true}
+        - {name: template_version, type: string, required: true}
+        - {name: snapshot_id, type: identifier, required: true}
+        - {name: package_digest, type: identifier, required: true}
+        - {name: dq_critical_breaks, type: integer, required: true}
+        - {name: dq_warnings, type: integer, required: true}
+        - {name: edit_check_failures, type: integer, required: true}
+        - {name: unexplained_variances, type: integer, required: true}
+        - {name: lineage_complete, type: boolean, required: true}
+        - {name: headline_ratio_pct, type: number, required: true}
+        - {name: regulatory_floor_pct, type: number, required: true}
+        - {name: days_to_deadline, type: integer, required: true}
+        - {name: is_amendment, type: boolean, required: true}
+        - {name: amendment_reason, type: string, required: false}
+      preconditions: []
+      side_effect: write
+      reversible: true
+      allowed_roles: [reg_preparer]
+      tool: {name: return_registry, action: record}
+  - target: ReportingEntity
+    evidence: "Filing is irreversible; it needs the reviewer and a senior officer, bound to the exact package."
+    action:
+      name: FileReturn
+      description: Submit a certified return package to the regulator's filing channel.
+      creates: ReturnFiling
+      parameters:
+        - {name: certification_id, type: identifier, required: true}
+        - {name: return_code, type: identifier, required: true}
+        - {name: period_end, type: date, required: true}
+        - {name: package_digest, type: identifier, required: true}
+      preconditions: []
+      side_effect: consequential
+      reversible: false
+      allowed_roles: [reg_preparer]
+      tool: {name: regulatory_filing, action: submit}

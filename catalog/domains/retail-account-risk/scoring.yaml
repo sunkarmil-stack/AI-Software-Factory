@@ -1,0 +1,29 @@
+# Transparent, rule-based scoring. Every point carries a reason code so each alert is explainable.
+# This configuration is a model for model-risk purposes: changes go through review and validation.
+version: "2026.1"
+fraud:
+  weights: {VELOCITY: 25, AMOUNT_SPIKE: 20, NEW_DEVICE: 15, GEO_IMPOSSIBLE: 25, NEW_PAYEE_TRANSFER: 10, CNP_HIGH_RISK_MCC: 10}
+  velocity: {count: 5, window_minutes: 60}
+  amount_spike_ratio: 5.0
+  geo_window_minutes: 120
+  high_risk_mcc: ["5732", "6051", "4829"]
+  alert_threshold: 40              # open an alert for analyst review
+  restrict_threshold: 70           # minimum score before a restriction may be proposed
+aml:                               # indicators only: the AML team decides on any FINTRAC report
+  cash_channels: [cash_deposit]
+  lctr_threshold_cents: 1000000    # $10,000 in cash in a 24-hour window (FINTRAC 24-hour rule)
+  structuring_band_cents: [900000, 999999]
+  structuring_min_count: 3
+  window_hours: 24
+credit:                            # early-warning signals; firm policy thresholds to confirm with Credit Risk
+  points: {DPD_30: 30, DPD_90: 30, HIGH_UTILIZATION: 15, SCORE_DROP: 15, MISSED_PAYMENTS: 10, NSF: 10}
+  utilization_pct: 90
+  score_drop: 50
+  missed_payments: 2
+  nsf: 3
+  review_threshold: 50
+  ifrs9:                           # stage INDICATOR for the finance ECL process, not an accounting determination
+    stage2_dpd_over: 30            # IFRS 9 rebuttable presumption of a significant increase in credit risk
+    stage3_dpd_over: 90            # IFRS 9 rebuttable presumption that default occurs no later than 90 days past due
+    sicr_score_drop: 60            # firm-defined quantitative SICR trigger (assumption)
+  policy_notice_days: 30           # firm policy notice before a limit reduction takes effect (confirm with Legal)

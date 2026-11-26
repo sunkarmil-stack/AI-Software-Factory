@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ai-software-factory
+description: Governed AI Software Factory - API, queue workers, migrations, sandbox namespace
+type: application
+version: 2.0.0
+appVersion: "2.0.0"

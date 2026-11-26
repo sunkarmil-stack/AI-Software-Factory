@@ -1,0 +1,40 @@
+name: sandbox
+version: 1.0.0
+owner: ai-platform-team
+actions:
+  run_tests:
+    side_effect: write
+    input_schema:
+      type: object
+      required:
+      - sandbox_id
+      properties:
+        sandbox_id:
+          type: string
+    output_schema:
+      type: object
+      required:
+      - passed
+      - summary
+      properties: {}
+    reversible: true
+resource_scope: '{tenant}/{project}'
+data_classes:
+- internal
+authentication: workload-identity
+authorization: identity grant + tenant + resource + policy tier
+timeout_s: 300
+retry:
+  max: 0
+  retry_on:
+  - timeout
+  - '429'
+  - '503'
+idempotency:
+  required: false
+  key: operation id bound to payload digest
+max_concurrency: 4
+circuit:
+  threshold: 3
+  cooldown_s: 10
+internal: true

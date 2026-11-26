@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: factory-worker
+  labels: {{- include "asf.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  selector: { matchLabels: { app.kubernetes.io/component: worker } }
+  template:
+    metadata:
+      labels: {{- include "asf.labels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+        azure.workload.identity/use: "true"
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: factory-worker
+      terminationGracePeriodSeconds: 120   # finish the current step; leases expire and are reclaimed otherwise
+      {{- include "asf.podSecurity" . | nindent 6 }}
+      nodeSelector: { factory/pool: app }
+      topologySpreadConstraints:
+        - { maxSkew: 1, topologyKey: topology.kubernetes.io/zone, whenUnsatisfiable: ScheduleAnyway,
+            labelSelector: { matchLabels: { app.kubernetes.io/component: worker } } }
+      containers:
+        - name: worker
+          image: {{ include "asf.image" . }}
+          args: ["worker"]
+          env:
+            {{- include "asf.env" . | nindent 12 }}
+            - name: FACTORY_WORKER_ID
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+          resources: {{- toYaml .Values.worker.resources | nindent 12 }}
+          {{- include "asf.containerSecurity" . | nindent 10 }}
+          volumeMounts:
+            - { name: config, mountPath: /etc/factory, readOnly: true }
+            - { name: home, mountPath: /var/factory }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: config, configMap: { name: factory-config } }
+        - { name: home, emptyDir: { sizeLimit: 10Gi } }
+        - { name: tmp, emptyDir: { sizeLimit: 1Gi } }

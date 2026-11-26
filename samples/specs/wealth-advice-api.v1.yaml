@@ -1,0 +1,133 @@
+spec_id: SPEC-WEALTH-ADVICE-API
+version: 1
+title: Wealth Advice API
+project: wealth-advisory
+owner: po.wendy
+risk_tier: 3
+business_outcomes:
+  - id: BO-1
+    statement: Advisors prepare and record suitable recommendations through one governed API with complete books and records
+    measure: Client review preparation time reduced from 45 minutes baseline to under 15 minutes with zero unrecorded recommendations
+actors:
+  - {name: Advisor workstation, description: Authenticated advisor desktop calling on behalf of a registered advisor}
+  - {name: Compliance reviewer, description: Internal user reviewing recommendations and their rationale}
+scope:
+  in: [read investment account summary, record a recommendation on an account]
+  out: [order routing, client self-service, discretionary management, cross-tenant reporting]
+preconditions:
+  - Caller identity and scopes are validated by the enterprise API gateway and forwarded as claims
+  - Suitability rules are evaluated by the factory ontology before a recommendation is recorded
+flows:
+  normal:
+    - Advisor requests an investment account by id within the wealth tenant and receives its summary
+    - Advisor records a recommendation with product, side, amount and suitability rationale
+  exception:
+    - Missing scope returns 403 without revealing data
+    - Account in another tenant returns 404 so existence is not leaked
+    - A recommendation without a rationale or with a non-positive amount returns 400
+contracts:
+  - id: CON-ADVICE
+    kind: openapi
+    version: 1
+    endpoints:
+      - {operation_id: getAccount, method: GET, path: "/accounts/{account_id}", kind: get, required_scope: "advice:read",
+         responses: {"200": account, "401": unauthenticated, "403": forbidden, "404": not found}}
+      - operation_id: recordRecommendation
+        method: POST
+        path: "/accounts/{account_id}/recommendations"
+        kind: create_child
+        child_kind: recommendations
+        required_scope: "advice:write"
+        require_mfa: true
+        request_schema:
+          type: object
+          required: [product_code, side, amount_cents, rationale]
+          properties:
+            product_code: {type: string}
+            side: {type: string}
+            amount_cents: {type: integer, minimum: 1, maximum: 1000000000}
+            rationale: {type: string}
+            idempotency_key: {type: string}
+        responses: {"201": recommendation recorded, "400": invalid, "403": forbidden, "404": not found}
+nfrs:
+  - {id: NFR-1, statement: p95 latency for account reads under 200 ms at reference load, measure: p95 < 200ms}
+  - {id: NFR-2, statement: No client identifiers or holdings in general telemetry, measure: redaction test passes}
+  - {id: NFR-3, statement: Recommendations are retained per the firm's books and records schedule, measure: retention policy applied to advice records}
+data_classification:
+  level: confidential
+  fields: {balance_cents: confidential, owner: confidential, rationale: confidential, id: internal}
+exclusions:
+  - Production client data is never used in delivery sandboxes
+  - Material non-public information (restricted) is out of scope until information barriers are approved
+requirements:
+  - id: REQ-1
+    name: Read account summary
+    statement: The service SHALL return an investment account in the caller's tenant to a caller holding advice:read.
+    outcome: BO-1
+    decisions: [ADR-1]
+    acceptance_criteria:
+      - id: AC-1
+        given: an advisor in tenant wealth with scope advice:read
+        when: it requests account acc-900
+        then: the account is returned with status 200
+        check:
+          request: {method: GET, path: /accounts/acc-900, headers: {X-Principal: adv-1, X-Tenant: wealth, X-Scopes: "advice:read"}}
+          expect: {status: 200, body_contains: {id: acc-900, currency: USD}}
+  - id: REQ-2
+    name: Tenant isolation
+    statement: The service SHALL return 404 for accounts outside the caller's tenant.
+    outcome: BO-1
+    decisions: [ADR-1]
+    acceptance_criteria:
+      - id: AC-2
+        given: an advisor in tenant wealth with advice:read
+        when: it requests retail account acc-100
+        then: 404 is returned and no account data is disclosed
+        check:
+          request: {method: GET, path: /accounts/acc-100, headers: {X-Principal: adv-1, X-Tenant: wealth, X-Scopes: "advice:read"}}
+          expect: {status: 404, body_excludes: [balance_cents]}
+  - id: REQ-3
+    name: Record recommendation
+    statement: The service SHALL record a recommendation with a positive amount and a rationale for callers holding advice:write with step-up authentication.
+    outcome: BO-1
+    decisions: [ADR-1]
+    acceptance_criteria:
+      - id: AC-3
+        given: an advisor in tenant wealth with advice:write and step-up authentication
+        when: it records a buy of 250000 cents of CDN-BOND-AGG on acc-900
+        then: the recommendation is recorded with status 201
+        check:
+          request: {method: POST, path: /accounts/acc-900/recommendations, headers: {X-Principal: adv-1, X-Tenant: wealth, X-Scopes: "advice:write", X-MFA: "true"}, body: {product_code: CDN-BOND-AGG, side: buy, amount_cents: 250000, rationale: Rebalances fixed income back to the IPS target for a medium risk profile}}
+          expect: {status: 201, body_contains: {amount_cents: 250000, parent: acc-900}}
+      - id: AC-4
+        given: an advisor with advice:write and step-up authentication
+        when: it records a recommendation without a rationale
+        then: the request is rejected with 400
+        check:
+          request: {method: POST, path: /accounts/acc-900/recommendations, headers: {X-Principal: adv-1, X-Tenant: wealth, X-Scopes: "advice:write", X-MFA: "true"}, body: {product_code: CDN-BOND-AGG, side: buy, amount_cents: 250000}}
+          expect: {status: 400}
+      - id: AC-5
+        given: an advisor with advice:write but without step-up authentication
+        when: it records a recommendation
+        then: the request is denied with 403
+        check:
+          request: {method: POST, path: /accounts/acc-900/recommendations, headers: {X-Principal: adv-1, X-Tenant: wealth, X-Scopes: "advice:write"}, body: {product_code: CDN-BOND-AGG, side: buy, amount_cents: 250000, rationale: Rebalances fixed income back to the IPS target}}
+          expect: {status: 403}
+decisions:
+  - id: ADR-1
+    context: Object-level authorization and step-up for advice records
+    options: [gateway-only scope checks, service-enforced scope plus tenant filter plus step-up on writes]
+    decision: Service enforces scope and tenant on every handler and step-up authentication on recommendation writes
+    consequences: Every handler must call require_scope; SAST rule enforces it
+    evidence: [threat model TM-1 spoofing, repudiation and elevation scenarios]
+    revisit_triggers: [introduction of an entitlements service for advisor books]
+    status: approved
+dependencies: [enterprise API gateway claim forwarding, advice records system]
+assumptions:
+  - {id: ASM-1, statement: Gateway forwards X-Principal, X-Tenant, X-Scopes and X-MFA claims, status: validated}
+permitted_agent_actions: [repo.branch, repo.commit, repo.open_pr, sandbox.run_tests, review.create_item]
+release_requirements:
+  environments: [nonprod, prod]
+  rollback: redeploy previous approved digest; advice records are append-only and are not rolled back
+history:
+  - {version: 1, change: initial baseline}

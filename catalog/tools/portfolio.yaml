@@ -1,0 +1,47 @@
+name: portfolio
+version: 1.0.0
+owner: wealth-operations
+actions:
+  get_holdings:
+    side_effect: read
+    input_schema:
+      type: object
+      required:
+      - account_id
+      properties:
+        account_id:
+          type: string
+    output_schema:
+      type: object
+      required:
+      - account_id
+      - holdings
+      - cash_cents
+      - ips
+      properties: {}
+resource_scope: '{tenant}/{project}'
+data_classes:
+- confidential
+authentication: workload-identity
+authorization: identity grant + tenant + resource + policy tier
+circuit:
+  threshold: 3
+  cooldown_s: 10
+max_concurrency: 8
+timeout_s: 10
+retry:
+  max: 2
+  retry_on:
+  - timeout
+  - '429'
+  - '503'
+idempotency:
+  required: false
+  key: operation id bound to payload digest
+endpoint:
+  via: ai_gateway
+  api: portfolio-accounting
+  actions:
+    get_holdings:
+      method: GET
+      path: /accounts/{account_id}/holdings

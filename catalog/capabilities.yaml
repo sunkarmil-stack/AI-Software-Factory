@@ -1,0 +1,20 @@
+capabilities:
+- spec.read
+- spec.comment
+- repo.read
+- repo.write_branch
+- repo.open_pr
+- sandbox.run
+- review.create_item
+- telemetry.read_sanitized
+- evidence.read
+- kb.search
+- model.invoke
+- portfolio.read
+- market_data.read
+- kyc.get
+- product_shelf.get
+- lakehouse.read
+- load_log.read
+- transactions.read
+- credit_exposure.read

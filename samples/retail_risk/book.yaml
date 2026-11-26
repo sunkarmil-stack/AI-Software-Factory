@@ -1,0 +1,48 @@
+# Synthetic retail risk data (Boundary A: no real customer data). Amounts in cents, times in UTC.
+as_of: "2026-11-26T10:00:00Z"
+accounts:
+  acc-100:
+    customer_id: cust-a
+    product_type: chequing
+    vulnerable_customer: false
+    profile: {avg_txn_cents_90d: 6500, home_country: CA, known_devices: [dev-a1], known_payees: [hydro-one, landlord-a]}
+    transactions:
+      - {id: t100-1, ts: "2026-11-26T08:10:00Z", amount_cents: 4200, channel: card_present, country: CA, device: dev-a1, payee: grocer, mcc: "5411"}
+      - {id: t100-2, ts: "2026-11-26T08:55:00Z", amount_cents: 1800, channel: card_present, country: CA, device: dev-a1, payee: cafe, mcc: "5814"}
+      - {id: t100-3, ts: "2026-11-26T09:30:00Z", amount_cents: 15000, channel: etransfer, country: CA, device: dev-a1, payee: landlord-a, mcc: "4829"}
+    credit: {facility: credit_card, limit_cents: 1000000, balance_cents: 200000, days_past_due: 0, bureau_score: 760,
+             bureau_score_at_origination: 770, missed_payments_6m: 0, nsf_6m: 0}
+  acc-101:
+    customer_id: cust-b
+    product_type: chequing
+    vulnerable_customer: false
+    profile: {avg_txn_cents_90d: 8000, home_country: CA, known_devices: [dev-b1], known_payees: [telco-b]}
+    transactions:
+      - {id: t101-1, ts: "2026-11-26T09:00:00Z", amount_cents: 5200, channel: card_present, country: CA, device: dev-b1, payee: pharmacy, mcc: "5912"}
+      - {id: t101-2, ts: "2026-11-26T09:20:00Z", amount_cents: 64000, channel: card_not_present, country: RO, device: dev-x9, payee: electronics-shop, mcc: "5732"}
+      - {id: t101-3, ts: "2026-11-26T09:24:00Z", amount_cents: 59000, channel: card_not_present, country: RO, device: dev-x9, payee: electronics-shop, mcc: "5732"}
+      - {id: t101-4, ts: "2026-11-26T09:31:00Z", amount_cents: 48000, channel: card_not_present, country: RO, device: dev-x9, payee: crypto-exchange, mcc: "6051"}
+      - {id: t101-5, ts: "2026-11-26T09:38:00Z", amount_cents: 51000, channel: etransfer, country: RO, device: dev-x9, payee: new-payee-77, mcc: "4829"}
+      - {id: t101-6, ts: "2026-11-26T09:44:00Z", amount_cents: 47000, channel: etransfer, country: RO, device: dev-x9, payee: new-payee-78, mcc: "4829"}
+    credit: {facility: credit_card, limit_cents: 1000000, balance_cents: 980000, days_past_due: 95, bureau_score: 610,
+             bureau_score_at_origination: 700, missed_payments_6m: 3, nsf_6m: 1}
+  acc-102:
+    customer_id: cust-c
+    product_type: line_of_credit
+    vulnerable_customer: true
+    profile: {avg_txn_cents_90d: 20000, home_country: CA, known_devices: [dev-c1], known_payees: [utility-c]}
+    transactions:
+      - {id: t102-1, ts: "2026-11-26T07:15:00Z", amount_cents: 110000, channel: etransfer, country: CA, device: dev-c2, payee: new-payee-12, mcc: "4829"}
+    credit: {facility: line_of_credit, limit_cents: 2500000, balance_cents: 2300000, days_past_due: 35, bureau_score: 640,
+             bureau_score_at_origination: 720, missed_payments_6m: 2, nsf_6m: 3}
+  acc-103:
+    customer_id: cust-d
+    product_type: business_chequing
+    vulnerable_customer: false
+    profile: {avg_txn_cents_90d: 150000, home_country: CA, known_devices: [dev-d1], known_payees: [supplier-d]}
+    transactions:
+      - {id: t103-1, ts: "2026-11-25T14:00:00Z", amount_cents: 950000, channel: cash_deposit, country: CA, device: branch-12, payee: self, mcc: "6011"}
+      - {id: t103-2, ts: "2026-11-25T18:30:00Z", amount_cents: 940000, channel: cash_deposit, country: CA, device: branch-07, payee: self, mcc: "6011"}
+      - {id: t103-3, ts: "2026-11-26T08:45:00Z", amount_cents: 980000, channel: cash_deposit, country: CA, device: branch-12, payee: self, mcc: "6011"}
+    credit: {facility: none, limit_cents: 0, balance_cents: 0, days_past_due: 0, bureau_score: 700,
+             bureau_score_at_origination: 700, missed_payments_6m: 0, nsf_6m: 0}

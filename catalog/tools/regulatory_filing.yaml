@@ -1,0 +1,68 @@
+name: regulatory_filing
+version: 1.0.0
+owner: regulatory-reporting
+description: Submits a certified return package to the regulator's filing channel.
+  Consequential and irreversible; corrections are amendments.
+actions:
+  submit:
+    side_effect: consequential
+    reversible: false
+    data_class: confidential
+    input_schema:
+      type: object
+      required:
+      - subject_id
+      - certification_id
+      - return_code
+      - period_end
+      - package_digest
+      - tenant
+      properties:
+        subject_id:
+          type: string
+        certification_id:
+          type: string
+        return_code:
+          type: string
+        period_end:
+          type: string
+        package_digest:
+          type: string
+        tenant:
+          type: string
+    output_schema:
+      type: object
+      required:
+      - filing_id
+      - receipt
+      - status
+resource_scope: '{tenant}/ontology'
+data_classes:
+- confidential
+authentication: workload-identity (Databricks OAuth via the enterprise AI gateway)
+authorization: identity grant + tenant + resource + policy tier; Unity Catalog permissions
+  enforced again at the source
+circuit:
+  threshold: 3
+  cooldown_s: 10
+max_concurrency: 2
+timeout_s: 60
+retry:
+  max: 0
+  retry_on: []
+idempotency:
+  required: true
+  key: operation id bound to payload digest
+endpoint:
+  via: ai_gateway
+  api: regulatory-filing
+  actions:
+    submit:
+      method: POST
+      path: /filings
+  reconcile:
+    method: GET
+    path: /filings
+    query: operation_id
+  note: Filing-channel adapter (OSFI RRS) not verified; until it is, the package is
+    uploaded by the filer and the receipt recorded.

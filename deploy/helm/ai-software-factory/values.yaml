@@ -1,0 +1,68 @@
+# Production defaults. Per-environment overrides: values-<env>.yaml (filled from `terraform output`).
+# STATUS: `helm lint`/`helm template` not run in the build environment (helm unavailable).
+image:
+  repository: acrasfprod.azurecr.io/ai-software-factory
+  digest: ""            # REQUIRED: deploy by digest only (sha256:...)
+  pullPolicy: IfNotPresent
+
+azure:
+  tenantId: ""
+  clientIds: { api: "", worker: "", migrate: "" }   # terraform output workload_client_ids
+
+factory:
+  profile: production
+  databaseUrl: ""       # postgresql://<api|worker identity name>@<postgres_fqdn>:5432/factory?sslmode=verify-full
+  aiGateway:
+    baseUrl: ""         # terraform output ai_gateway_url
+    audience: api://enterprise-ai-gateway
+  entra:
+    audience: api://ai-software-factory
+    roleMap:
+      Factory.ReleaseOwner: release_owner
+      Factory.ChangeManager: change_manager
+      Factory.Auditor: auditor
+      Factory.Operator: operator
+      Factory.ProductOwner: product_owner
+      Factory.Architect: architect
+      Factory.Engineer: engineer
+      Factory.Supervisor: supervisor
+      Factory.OntologyOwner: ontology_owner
+      Factory.PlatformAdmin: platform_admin
+      Factory.Advisor: advisor
+      Factory.PortfolioManager: portfolio_manager
+      Factory.ComplianceOfficer: compliance_officer
+    tenantMap: {}       # Entra group object id -> factory tenant
+  keyVault:
+    url: ""
+    keys:
+      ci-builder: factory-ci-builder
+      release-service: factory-release
+      skill-registry: factory-skill-registry
+      approval-service: factory-approval
+      policy-service: factory-policy
+  deployment:
+    target: gitops
+    gitopsRepo: ""      # protected environments repo, e.g. ssh://git@.../platform/environments.git
+  otelEndpoint: http://otel-collector.observability:4318
+  exemptions: []        # production should run with none; each needs owner, reason, expires (epoch)
+
+api:
+  replicas: 3
+  resources: { requests: { cpu: 500m, memory: 512Mi }, limits: { cpu: "2", memory: 1Gi } }
+  hpa: { min: 3, max: 10, cpu: 70 }
+
+worker:
+  replicas: 3
+  resources: { requests: { cpu: "1", memory: 1Gi }, limits: { cpu: "2", memory: 2Gi } }
+  hpa: { min: 3, max: 20, cpu: 70 }
+
+sandbox:
+  namespace: factory-sandbox
+  runtimeClass: kata-vm-isolation
+  maxConcurrentJobs: 50
+
+network:
+  aiGatewayCidr: ""     # APIM subnet
+  postgresCidr: ""      # Postgres delegated subnet
+  privateEndpointCidr: "" # Key Vault / ACR / Blob private endpoints
+  ingressNamespace: ingress

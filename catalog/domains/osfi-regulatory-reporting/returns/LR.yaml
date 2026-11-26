@@ -1,0 +1,39 @@
+code: LR
+name: Leverage Requirements Return (LRR)
+template_version: "2026.1"
+guideline: OSFI Leverage Requirements Guideline (2023)
+frequency: quarterly
+filing_days: 30                    # "filed within 30 days of fiscal quarter end" (LRR instructions); confirm per return version
+sources:                           # input name -> lakehouse action . field
+  cet1_before_adjustments: capital_components.cet1_before_adjustments
+  cet1_regulatory_adjustments: capital_components.cet1_regulatory_adjustments
+  at1_capital: capital_components.at1_capital
+  tier1_reported_car: capital_components.tier1_reported_car
+  on_balance_sheet: leverage_exposures.on_balance_sheet
+  derivatives: leverage_exposures.derivatives
+  securities_financing: leverage_exposures.securities_financing
+  off_balance_sheet_after_ccf: leverage_exposures.off_balance_sheet_after_ccf
+  tier1_deductions: leverage_exposures.tier1_deductions
+  gl_total_assets_in_scope: gl_balances.total_assets_in_scope
+cells:                             # evaluated in order with the ontology's safe expression evaluator
+  - {id: LR.010, key: tier1_capital, label: Tier 1 capital, formula: "cet1_before_adjustments + cet1_regulatory_adjustments + at1_capital"}
+  - {id: LR.020, key: on_bs_exposures, label: On-balance sheet exposures, formula: "on_balance_sheet"}
+  - {id: LR.030, key: derivative_exposures, label: Derivative exposures, formula: "derivatives"}
+  - {id: LR.040, key: sft_exposures, label: Securities financing transaction exposures, formula: "securities_financing"}
+  - {id: LR.050, key: off_bs_exposures, label: Off-balance sheet exposures after CCF, formula: "off_balance_sheet_after_ccf"}
+  - {id: LR.060, key: tier1_deduction_adjustment, label: Tier 1 deductions excluded from exposures, formula: "tier1_deductions"}
+  - {id: LR.070, key: total_exposure, label: Total exposure measure, formula: "on_bs_exposures + derivative_exposures + sft_exposures + off_bs_exposures + tier1_deduction_adjustment"}
+  - {id: LR.080, key: leverage_ratio_pct, label: Leverage ratio (%), formula: "100 * tier1_capital / total_exposure", ratio: true}
+headline: leverage_ratio_pct
+requirement:                       # 3% minimum + D-SIB buffer of 50% of the higher-loss absorbency surcharge
+  minimum_pct: 3.0
+  dsib_buffer_share_of_hla: 0.5
+edit_checks:
+  - {id: EC-LR-01, name: Tier 1 agrees to the capital (CAR) return, expression: "tier1_capital == tier1_reported_car", scope: cross-return}
+  - {id: EC-LR-02, name: Exposure components are non-negative, expression: "min(on_bs_exposures, derivative_exposures, sft_exposures, off_bs_exposures) >= 0"}
+  - {id: EC-LR-03, name: Tier 1 deductions are reported as negatives, expression: "tier1_deduction_adjustment <= 0"}
+  - {id: EC-LR-04, name: Total exposure equals its components, expression: "total_exposure == on_bs_exposures + derivative_exposures + sft_exposures + off_bs_exposures + tier1_deduction_adjustment"}
+variance:
+  compare_to: previous_quarter
+  material_pct: 10.0
+  material_abs: 5000               # CAD millions; both thresholds must be met

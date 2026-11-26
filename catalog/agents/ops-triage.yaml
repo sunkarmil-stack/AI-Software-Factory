@@ -1,0 +1,51 @@
+id: ops-triage
+version: 1.0.0
+owner: ai-platform-team
+description: Analyzes sanitized telemetry and proposes incidents or fixes; never changes
+  operations.
+framework:
+  name: factory-native
+  version: 0.1.0
+  alternative_spike: langgraph
+runtime:
+  python: '3.12'
+  worker_type: agent-worker
+skills:
+- name: incident-triage
+  version: 1.0.0
+model:
+  deployment: delivery-default
+  purpose: delivery.operations
+tools:
+- review:create_item@*
+state_schema:
+  type: object
+  properties:
+    task:
+      type: object
+    result:
+      type: object
+memory_policy:
+  transient: per-task, cleared at completion
+  persistent: none
+budgets:
+  max_model_tokens: 60000
+  max_tool_calls: 20
+  max_cost_usd: 2.0
+termination:
+  on_ambiguity: blocked
+  on_budget: stop_and_escalate
+  max_repairs: 1
+evaluation_suite: evals/delivery-agents.yaml
+deployment_class: delivery
+prompt:
+  id: ops-triage
+  version: 1.0.0
+task_kind: ops.triage
+payload_schema:
+  type: object
+  required:
+  - proposals
+  properties:
+    proposals:
+      type: array

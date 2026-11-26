@@ -1,0 +1,59 @@
+id: reg-dq-triage
+version: 1.0.0
+owner: regulatory-reporting
+description: Explains data-quality breaks and routes them to the owning data team;
+  cannot change data.
+framework:
+  name: factory-native
+  version: 0.1.0
+  alternative_spike: langgraph
+runtime:
+  python: '3.12'
+  worker_type: agent-worker
+skills:
+- name: regulatory-reporting-analysis
+  version: 1.0.0
+model:
+  deployment: regreport-analyst
+  purpose: product.regreport.dq
+tools:
+- lakehouse:load_log@finance/*
+state_schema:
+  type: object
+  properties:
+    task:
+      type: object
+    result:
+      type: object
+memory_policy:
+  transient: per-task, cleared at completion
+  persistent: none (the lakehouse and return registry are the source)
+budgets:
+  max_model_tokens: 40000
+  max_tool_calls: 6
+  max_cost_usd: 1.0
+termination:
+  on_ambiguity: blocked
+  on_budget: stop_and_escalate
+  max_repairs: 1
+evaluation_suite: catalog/domains/osfi-regulatory-reporting/evals.yaml
+deployment_class: product
+prompt:
+  id: reg-dq-triage
+  version: 1.0.0
+task_kind: regrep.dq_triage
+payload_schema:
+  type: object
+  required:
+  - items
+  properties:
+    items:
+      type: array
+      items:
+        type: object
+        required:
+        - check
+        - table
+        - likely_cause
+        - owner
+        - next_step

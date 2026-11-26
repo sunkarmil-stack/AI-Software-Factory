@@ -1,0 +1,151 @@
+spec_id: SPEC-RISK-CASES-API
+version: 1
+title: Risk Cases API
+project: retail-account-risk
+owner: po.priya
+risk_tier: 3
+business_outcomes:
+  - id: BO-1
+    statement: Fraud, AML and credit analysts see and annotate risk cases in one governed service without exposing customer identifiers
+    measure: All case notes recorded against open cases; zero customer identifiers in API responses
+actors:
+  - {name: Risk analyst, description: Fraud, AML or credit analyst in the retail tenant}
+  - {name: Internal audit, description: Read-only users checking case handling}
+scope:
+  in: [list cases in the caller's tenant, read one case, add a note to an open case]
+  out: [scoring and alerting (done by the factory risk engine), restricting accounts, changing limits, FINTRAC reporting]
+preconditions:
+  - Caller identity, tenant, scopes and step-up authentication are validated by the enterprise API gateway and forwarded as claims
+  - Cases are opened by the factory's retail risk workflow, not by this service
+flows:
+  normal:
+    - An analyst lists the cases in the retail tenant and reads one case's score and reason codes
+    - The analyst adds an investigation note to an open case
+  exception:
+    - Missing scope returns 403 without revealing data
+    - A case in another tenant returns 404 so its existence is not leaked
+    - A note on a case that is not open returns 409
+    - A note shorter than 10 characters returns 400
+contracts:
+  - id: CON-CASES
+    kind: openapi
+    version: 1
+    endpoints:
+      - {operation_id: listCases, method: GET, path: "/cases", kind: list, resource: cases,
+         required_scope: "cases:read", hide_fields: [customer_id],
+         responses: {"200": cases, "401": unauthenticated, "403": forbidden}}
+      - {operation_id: getCase, method: GET, path: "/cases/{case_id}", kind: get, resource: cases,
+         required_scope: "cases:read", hide_fields: [customer_id],
+         responses: {"200": case, "401": unauthenticated, "403": forbidden, "404": not found}}
+      - operation_id: addCaseNote
+        method: POST
+        path: "/cases/{case_id}/notes"
+        kind: create_child
+        resource: cases
+        child_kind: notes
+        required_scope: "cases:write"
+        parent_must_have: {status: open}
+        request_schema:
+          type: object
+          required: [note, author]
+          properties:
+            note: {type: string, minLength: 10}
+            author: {type: string}
+            idempotency_key: {type: string}
+        responses: {"201": note added, "400": invalid, "403": forbidden, "404": not found, "409": case not open}
+nfrs:
+  - {id: NFR-1, statement: p95 latency for case reads under 200 ms at reference load, measure: p95 < 200ms}
+  - {id: NFR-2, statement: Customer identifiers are never returned by the API, measure: field excluded in every response}
+  - {id: NFR-3, statement: Case notes are retained per the firm's records schedule, measure: retention policy applied}
+data_classification:
+  level: confidential
+  fields: {customer_id: confidential, score: confidential, reason_codes: confidential, note: confidential}
+exclusions:
+  - Production customer data is never used in delivery sandboxes
+  - The service never changes a case's score, type or status
+requirements:
+  - id: REQ-1
+    name: List cases
+    statement: The service SHALL list the cases in the caller's tenant to a caller holding cases:read, without customer identifiers.
+    outcome: BO-1
+    decisions: [ADR-1]
+    acceptance_criteria:
+      - id: AC-1
+        given: an analyst in tenant retail with scope cases:read
+        when: it lists cases
+        then: the three retail cases are returned with status 200
+        check:
+          request: {method: GET, path: /cases, headers: {X-Principal: risk-1, X-Tenant: retail, X-Scopes: "cases:read"}}
+          expect: {status: 200, items_len: 3}
+  - id: REQ-2
+    name: Read a case
+    statement: The service SHALL return one case in the caller's tenant with its score and reason codes, without customer identifiers.
+    outcome: BO-1
+    decisions: [ADR-1]
+    acceptance_criteria:
+      - id: AC-2
+        given: an analyst in tenant retail with cases:read
+        when: it reads CASE-1001
+        then: the case is returned with its type and score and without the customer identifier
+        check:
+          request: {method: GET, path: /cases/CASE-1001, headers: {X-Principal: risk-1, X-Tenant: retail, X-Scopes: "cases:read"}}
+          expect: {status: 200, body_contains: {case_type: fraud, score: 100}, body_excludes: [customer_id]}
+      - id: AC-3
+        given: an analyst in tenant retail with cases:read
+        when: it reads wealth case CASE-W-01
+        then: 404 is returned and no case data is disclosed
+        check:
+          request: {method: GET, path: /cases/CASE-W-01, headers: {X-Principal: risk-1, X-Tenant: retail, X-Scopes: "cases:read"}}
+          expect: {status: 404, body_excludes: [score]}
+      - id: AC-4
+        given: a retail user without cases:read
+        when: it lists cases
+        then: the request is denied with 403
+        check:
+          request: {method: GET, path: /cases, headers: {X-Principal: risk-2, X-Tenant: retail, X-Scopes: "accounts:read"}}
+          expect: {status: 403}
+  - id: REQ-3
+    name: Add a case note
+    statement: The service SHALL add a note of at least 10 characters to an open case for callers holding cases:write.
+    outcome: BO-1
+    decisions: [ADR-1]
+    acceptance_criteria:
+      - id: AC-5
+        given: an analyst in tenant retail with cases:write
+        when: it adds a note to open case CASE-1001
+        then: the note is recorded with status 201
+        check:
+          request: {method: POST, path: /cases/CASE-1001/notes, headers: {X-Principal: risk-1, X-Tenant: retail, X-Scopes: "cases:write"}, body: {note: Customer confirmed the card was stolen, author: risk-1}}
+          expect: {status: 201, body_contains: {parent: CASE-1001, author: risk-1}}
+      - id: AC-6
+        given: an analyst with cases:write
+        when: it adds a note to CASE-1003, which was referred to the AML officer
+        then: the request is rejected with 409
+        check:
+          request: {method: POST, path: /cases/CASE-1003/notes, headers: {X-Principal: risk-1, X-Tenant: retail, X-Scopes: "cases:write"}, body: {note: Following up on cash deposits, author: risk-1}}
+          expect: {status: 409}
+      - id: AC-7
+        given: an analyst with cases:write
+        when: it adds a note shorter than 10 characters
+        then: the request is rejected with 400
+        check:
+          request: {method: POST, path: /cases/CASE-1001/notes, headers: {X-Principal: risk-1, X-Tenant: retail, X-Scopes: "cases:write"}, body: {note: ok, author: risk-1}}
+          expect: {status: 400}
+decisions:
+  - id: ADR-1
+    context: Object-level authorization and data minimization for risk case records
+    options: [gateway-only scope checks, service-enforced scope plus tenant filter plus identifier exclusion plus status checks]
+    decision: Service enforces scope and tenant on every handler, never returns customer identifiers, and accepts notes only on open cases
+    consequences: Every handler must call require_scope; SAST rule enforces it; status checks live in the service
+    evidence: [threat model TM-1 information disclosure and tampering scenarios]
+    revisit_triggers: [integration with the enterprise case management system]
+    status: approved
+dependencies: [enterprise API gateway claim forwarding, factory retail risk workflow]
+assumptions:
+  - {id: ASM-1, statement: Gateway forwards X-Principal, X-Tenant, X-Scopes and X-MFA claims, status: validated}
+permitted_agent_actions: [repo.branch, repo.commit, repo.open_pr, sandbox.run_tests, review.create_item]
+release_requirements:
+  environments: [nonprod, prod]
+  rollback: redeploy previous approved digest; notes are append-only and are not rolled back
+history:
+  - {version: 1, change: initial baseline}

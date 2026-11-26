@@ -1,0 +1,84 @@
+<!-- Enterprise AI gateway policy: factory model traffic (OpenAI-compatible chat completions).
+     Layer 1 of the two-layer control model; the factory's model gateway is layer 2.
+     Error contract relied on by factory/enterprise/ai_gateway.py:
+       403 {"error":{"code":"AssetDisabled"|"Revoked"}}  -> EnterpriseRevokedModel (fallback, evidence)
+       429 + Retry-After                                  -> GatewayThrottled (breaker/fallback)
+       400 {"error":{"code":"ContentFiltered"}}           -> ContentRejected (no fallback)
+     STATUS: authored against APIM GenAI gateway policy docs; not deployed in the build environment. -->
+<policies>
+  <inbound>
+    <base />
+    <!-- enterprise kill switch for the whole factory -->
+    <choose>
+      <when condition="@(&quot;{{factory-enabled}}&quot; != &quot;true&quot;)">
+        <return-response>
+          <set-status code="403" reason="Revoked" />
+          <set-header name="content-type" exists-action="override"><value>application/json</value></set-header>
+          <set-body>{"error":{"code":"Revoked","message":"factory egress disabled by enterprise AI gateway"}}</set-body>
+        </return-response>
+      </when>
+    </choose>
+    <!-- caller must be a registered factory workload identity -->
+    <validate-azure-ad-token tenant-id="${tenant_id}" header-name="Authorization" failed-validation-httpcode="401">
+      <client-application-ids>
+%{ for id in split(",", allowed_appids) ~}
+        <application-id>${id}</application-id>
+%{ endfor ~}
+      </client-application-ids>
+      <audiences><audience>${gateway_aud}</audience></audiences>
+    </validate-azure-ad-token>
+    <set-variable name="alias" value="@(context.Request.Body.As&lt;JObject&gt;(preserveContent: true)[&quot;model&quot;]?.ToString() ?? &quot;&quot;)" />
+    <!-- per-asset revocation list maintained by Model Risk (named value: comma-separated aliases) -->
+    <choose>
+      <when condition="@(&quot;{{revoked-models}}&quot;.Split(',').Contains((string)context.Variables[&quot;alias&quot;]))">
+        <return-response>
+          <set-status code="403" reason="AssetDisabled" />
+          <set-header name="content-type" exists-action="override"><value>application/json</value></set-header>
+          <set-body>@("{\"error\":{\"code\":\"AssetDisabled\",\"message\":\"model " + (string)context.Variables["alias"] + " disabled\"}}")</set-body>
+        </return-response>
+      </when>
+    </choose>
+    <!-- route alias to the approved backend (backend ids == aliases; unknown alias -> 404) -->
+    <set-backend-service backend-id="@((string)context.Variables[&quot;alias&quot;])" />
+    <!-- enterprise token quotas, per calling workload -->
+    <llm-token-limit counter-key="@(context.Request.Headers.GetValueOrDefault(&quot;x-factory-workload&quot;, context.Subscription?.Id ?? &quot;anon&quot;))"
+                     tokens-per-minute="${tpm_limit}" token-quota="${monthly_quota}" token-quota-period="Monthly"
+                     estimate-prompt-tokens="true" remaining-tokens-header-name="x-ratelimit-remaining-tokens" />
+    <llm-content-safety backend-id="content-safety" shield-prompt="true">
+      <categories output-type="EightSeverityLevels">
+        <category name="Hate" threshold="4" />
+        <category name="Violence" threshold="4" />
+        <category name="SelfHarm" threshold="4" />
+        <category name="Sexual" threshold="4" />
+      </categories>
+    </llm-content-safety>
+    <llm-emit-token-metric namespace="enterprise-ai-gateway">
+      <dimension name="Workload" value="@(context.Request.Headers.GetValueOrDefault(&quot;x-factory-workload&quot;, &quot;&quot;))" />
+      <dimension name="Project" value="@(context.Request.Headers.GetValueOrDefault(&quot;x-factory-project&quot;, &quot;&quot;))" />
+      <dimension name="Alias" value="@((string)context.Variables[&quot;alias&quot;])" />
+    </llm-emit-token-metric>
+    <!-- the gateway, not the factory, holds upstream credentials -->
+    <authentication-managed-identity resource="https://cognitiveservices.azure.com" />
+  </inbound>
+  <backend>
+    <retry condition="@(context.Response.StatusCode == 429 || context.Response.StatusCode >= 500)" count="1" interval="1" first-fast-retry="false">
+      <forward-request buffer-request-body="true" timeout="120" />
+    </retry>
+  </backend>
+  <outbound>
+    <base />
+    <set-header name="x-enterprise-gateway" exists-action="override"><value>apim</value></set-header>
+  </outbound>
+  <on-error>
+    <base />
+    <choose>
+      <when condition="@(context.LastError.Source == &quot;llm-content-safety&quot;)">
+        <return-response>
+          <set-status code="400" reason="ContentFiltered" />
+          <set-header name="content-type" exists-action="override"><value>application/json</value></set-header>
+          <set-body>{"error":{"code":"ContentFiltered","message":"blocked by enterprise content safety"}}</set-body>
+        </return-response>
+      </when>
+    </choose>
+  </on-error>
+</policies>

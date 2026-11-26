@@ -1,0 +1,74 @@
+name: lakehouse
+version: 1.0.0
+owner: data-platform
+description: Certified, read-only Unity Catalog functions over regrep.gold, via the
+  Databricks managed MCP server. No free-form SQL.
+actions:
+  capital_components:
+    side_effect: read
+    input_schema: &id001
+      type: object
+      required:
+      - period_end
+      properties:
+        period_end:
+          type: string
+        version:
+          type: integer
+    output_schema: &id002
+      type: object
+      required:
+      - table
+      - version
+      - period_end
+  leverage_exposures:
+    side_effect: read
+    input_schema: *id001
+    output_schema: *id002
+  gl_balances:
+    side_effect: read
+    input_schema: *id001
+    output_schema: *id002
+  hqla:
+    side_effect: read
+    input_schema: *id001
+    output_schema: *id002
+  cash_flows_30d:
+    side_effect: read
+    input_schema: *id001
+    output_schema: *id002
+  load_log:
+    side_effect: read
+    input_schema: *id001
+    output_schema: *id002
+resource_scope: '{tenant}/{project}'
+data_classes:
+- confidential
+authentication: workload-identity (Databricks OAuth via the enterprise AI gateway)
+authorization: identity grant + tenant + resource + policy tier; Unity Catalog permissions
+  enforced again at the source
+circuit:
+  threshold: 3
+  cooldown_s: 10
+max_concurrency: 4
+timeout_s: 30
+retry:
+  max: 2
+  retry_on:
+  - timeout
+  - '429'
+  - '503'
+idempotency:
+  required: false
+  key: operation id bound to payload digest
+endpoint:
+  via: ai_gateway
+  protocol: mcp
+  server: databricks-regrep
+  tools:
+    capital_components: regrep__gold__capital_components
+    leverage_exposures: regrep__gold__leverage_exposures
+    gl_balances: regrep__gold__gl_balances
+    hqla: regrep__gold__hqla
+    cash_flows_30d: regrep__gold__cash_flows_30d
+    load_log: regrep__gold__load_log

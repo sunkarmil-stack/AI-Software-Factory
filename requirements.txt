@@ -1,0 +1,9 @@
+# Runtime (versions verified in the reference build environment)
+PyYAML>=6.0
+starlette>=0.40
+uvicorn>=0.30
+PyJWT[crypto]>=2.9
+cryptography>=43
+requests>=2.32
+# Production only (not installed in the reference environment; see docs/production.md)
+# psycopg[binary]>=3.2   -> installed by the Dockerfile

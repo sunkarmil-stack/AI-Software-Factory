@@ -1,0 +1,159 @@
+spec_id: SPEC-REGULATORY-RETURNS-API
+version: 1
+title: Regulatory Returns API
+project: osfi-regulatory-reporting
+owner: po.fran
+risk_tier: 3
+business_outcomes:
+  - id: BO-1
+    statement: Finance, risk and audit see the status of every OSFI return and record filing receipts in one governed service
+    measure: Zero filed returns without a recorded receipt; return status lookups replace manual tracking spreadsheets
+actors:
+  - {name: Regulatory reporting team, description: Preparers and reviewers in the finance tenant tracking returns}
+  - {name: Internal audit, description: Read-only users checking what was filed and when}
+scope:
+  in: [list returns for the caller's tenant, read one return's status and headline ratio, record a filing receipt for a certified return]
+  out: [calculating returns (done by the factory reporting engine), filing with OSFI, editing return values]
+preconditions:
+  - Caller identity, tenant, scopes and step-up authentication are validated by the enterprise API gateway and forwarded as claims
+  - Return values are produced and certified by the factory's regulatory reporting workflow, not by this service
+flows:
+  normal:
+    - A reporting user lists the returns in the finance tenant and reads one return's status
+    - After the filer uploads a certified package, the filer records the regulator's receipt reference
+  exception:
+    - Missing scope returns 403 without revealing data
+    - A return in another tenant returns 404 so its existence is not leaked
+    - A receipt for a return that is not certified returns 409
+    - A malformed receipt returns 400
+contracts:
+  - id: CON-RETURNS
+    kind: openapi
+    version: 1
+    endpoints:
+      - {operation_id: listReturns, method: GET, path: "/returns", kind: list, resource: returns,
+         required_scope: "returns:read", hide_fields: [reviewer_notes],
+         responses: {"200": returns, "401": unauthenticated, "403": forbidden}}
+      - {operation_id: getReturn, method: GET, path: "/returns/{return_id}", kind: get, resource: returns,
+         required_scope: "returns:read", hide_fields: [reviewer_notes],
+         responses: {"200": return, "401": unauthenticated, "403": forbidden, "404": not found}}
+      - operation_id: recordFilingReceipt
+        method: POST
+        path: "/returns/{return_id}/receipts"
+        kind: create_child
+        resource: returns
+        child_kind: receipts
+        required_scope: "returns:file"
+        require_mfa: true
+        parent_must_have: {status: certified}
+        request_schema:
+          type: object
+          required: [receipt_ref, filed_by]
+          properties:
+            receipt_ref: {type: string, minLength: 8}
+            filed_by: {type: string}
+            idempotency_key: {type: string}
+        responses: {"201": receipt recorded, "400": invalid, "403": forbidden, "404": not found, "409": not certified}
+nfrs:
+  - {id: NFR-1, statement: p95 latency for return reads under 200 ms at reference load, measure: p95 < 200ms}
+  - {id: NFR-2, statement: Internal reviewer notes are never returned by the API, measure: field excluded in every response}
+  - {id: NFR-3, statement: Receipts are retained with the certified return for the books-and-records period, measure: retention policy applied}
+data_classification:
+  level: confidential
+  fields: {headline_pct: confidential, snapshot_id: internal, reviewer_notes: confidential, receipt_ref: internal}
+exclusions:
+  - Production return data is never used in delivery sandboxes
+  - The service never changes a return's values; corrections are amendments in the reporting workflow
+requirements:
+  - id: REQ-1
+    name: List returns
+    statement: The service SHALL list the returns in the caller's tenant to a caller holding returns:read, without internal reviewer notes.
+    outcome: BO-1
+    decisions: [ADR-1]
+    acceptance_criteria:
+      - id: AC-1
+        given: a reporting user in tenant finance with scope returns:read
+        when: it lists returns
+        then: the three finance returns are returned with status 200
+        check:
+          request: {method: GET, path: /returns, headers: {X-Principal: fin-1, X-Tenant: finance, X-Scopes: "returns:read"}}
+          expect: {status: 200, items_len: 3}
+  - id: REQ-2
+    name: Read a return
+    statement: The service SHALL return one return's status and headline ratio in the caller's tenant, without internal reviewer notes.
+    outcome: BO-1
+    decisions: [ADR-1]
+    acceptance_criteria:
+      - id: AC-2
+        given: a reporting user in tenant finance with returns:read
+        when: it reads LR-2026-10-31
+        then: the return is returned with its status and headline ratio and without reviewer notes
+        check:
+          request: {method: GET, path: /returns/LR-2026-10-31, headers: {X-Principal: fin-1, X-Tenant: finance, X-Scopes: "returns:read"}}
+          expect: {status: 200, body_contains: {status: certified, headline_pct: 4.28}, body_excludes: [reviewer_notes]}
+      - id: AC-3
+        given: a user in tenant retail with returns:read
+        when: it reads finance return LR-2026-10-31
+        then: 404 is returned and no return data is disclosed
+        check:
+          request: {method: GET, path: /returns/LR-2026-10-31, headers: {X-Principal: ret-1, X-Tenant: retail, X-Scopes: "returns:read"}}
+          expect: {status: 404, body_excludes: [headline_pct]}
+      - id: AC-4
+        given: a finance user without returns:read
+        when: it lists returns
+        then: the request is denied with 403
+        check:
+          request: {method: GET, path: /returns, headers: {X-Principal: fin-2, X-Tenant: finance, X-Scopes: "other:read"}}
+          expect: {status: 403}
+  - id: REQ-3
+    name: Record filing receipt
+    statement: The service SHALL record a filing receipt only for a certified return, for callers holding returns:file with step-up authentication.
+    outcome: BO-1
+    decisions: [ADR-1]
+    acceptance_criteria:
+      - id: AC-5
+        given: a filer in tenant finance with returns:file and step-up authentication
+        when: it records receipt RRS-20261113-0042 for certified return LA-2026-10-31
+        then: the receipt is recorded with status 201
+        check:
+          request: {method: POST, path: /returns/LA-2026-10-31/receipts, headers: {X-Principal: fin-1, X-Tenant: finance, X-Scopes: "returns:file", X-MFA: "true"}, body: {receipt_ref: RRS-20261113-0042, filed_by: fin-1}}
+          expect: {status: 201, body_contains: {receipt_ref: RRS-20261113-0042, parent: LA-2026-10-31}}
+      - id: AC-6
+        given: a filer with returns:file but without step-up authentication
+        when: it records a receipt
+        then: the request is denied with 403
+        check:
+          request: {method: POST, path: /returns/LA-2026-10-31/receipts, headers: {X-Principal: fin-1, X-Tenant: finance, X-Scopes: "returns:file"}, body: {receipt_ref: RRS-20261113-0042, filed_by: fin-1}}
+          expect: {status: 403}
+      - id: AC-7
+        given: a filer with returns:file and step-up authentication
+        when: it records a receipt for LR-2026-07-31, which is already filed
+        then: the request is rejected with 409
+        check:
+          request: {method: POST, path: /returns/LR-2026-07-31/receipts, headers: {X-Principal: fin-1, X-Tenant: finance, X-Scopes: "returns:file", X-MFA: "true"}, body: {receipt_ref: RRS-20260828-0007, filed_by: fin-1}}
+          expect: {status: 409}
+      - id: AC-8
+        given: a filer with returns:file and step-up authentication
+        when: it records a receipt with a reference shorter than 8 characters
+        then: the request is rejected with 400
+        check:
+          request: {method: POST, path: /returns/LA-2026-10-31/receipts, headers: {X-Principal: fin-1, X-Tenant: finance, X-Scopes: "returns:file", X-MFA: "true"}, body: {receipt_ref: RRS-1, filed_by: fin-1}}
+          expect: {status: 400}
+decisions:
+  - id: ADR-1
+    context: Object-level authorization, field exclusion and step-up for regulatory return records
+    options: [gateway-only scope checks, service-enforced scope plus tenant filter plus field exclusion plus step-up on writes]
+    decision: Service enforces scope and tenant on every handler, excludes reviewer notes from every response, requires step-up authentication and certified status for receipts
+    consequences: Every handler must call require_scope; SAST rule enforces it; status checks live in the service
+    evidence: [threat model TM-1 spoofing, information disclosure and repudiation scenarios]
+    revisit_triggers: [direct integration with the regulator's filing channel]
+    status: approved
+dependencies: [enterprise API gateway claim forwarding, factory regulatory reporting workflow]
+assumptions:
+  - {id: ASM-1, statement: Gateway forwards X-Principal, X-Tenant, X-Scopes and X-MFA claims, status: validated}
+permitted_agent_actions: [repo.branch, repo.commit, repo.open_pr, sandbox.run_tests, review.create_item]
+release_requirements:
+  environments: [nonprod, prod]
+  rollback: redeploy previous approved digest; receipts are append-only and are not rolled back
+history:
+  - {version: 1, change: initial baseline}

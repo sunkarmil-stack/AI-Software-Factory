@@ -1,0 +1,27 @@
+# Domain pack: OSFI regulatory returns produced from the Databricks lakehouse.
+project: osfi-regulatory-reporting
+tenant: finance
+risk_tier: 3                       # returns filed with the regulator
+budget_usd: 100.0
+template: fastapi-service
+owners:
+  product_owner: po.fran
+  architect: arch.alex
+  engineer: eng.erin
+  qa_owner: qa.quinn
+  release_owner: rel.rita
+  operator: ops.fio
+spec: samples/specs/regulatory-returns-api.v1.yaml   # delivered through Pipelines A, B, D
+ontology: ontology.yaml            # proposed through governance, never seeded
+evals: evals.yaml
+returns: [returns/LR.yaml, returns/LA.yaml]
+data_quality: dq.yaml
+data_source:
+  kind: databricks-lakehouse
+  mcp_server: databricks-regrep    # catalog/mcp_servers.yaml: Unity Catalog functions, read-only, pinned
+  tool: lakehouse
+  reader_identity: regrep-service  # deterministic extraction runs as a workload, not as an agent
+product_agents: [reg-variance-analyst, reg-dq-triage]
+model_route: regreport-analyst
+signing_identity: release-service  # signs the return package (Key Vault in production)
+data_classes_allowed: [internal, confidential]

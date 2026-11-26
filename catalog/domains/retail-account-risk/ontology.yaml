@@ -1,0 +1,185 @@
+# Retail account risk ontology. Imported as governed proposals: business rules need the ontology owner
+# and product owner; actions need the ontology owner and architect, plus security when consequential.
+# Rule facts are computed by the deterministic scoring engine (factory/product/retailrisk.py), never by a model.
+source: retail-risk-policy-v1
+concepts:
+  - name: MonitoredAccount
+    definition: A retail deposit or credit account under transaction and credit-risk monitoring.
+    data_class: confidential
+    owner: retail-risk
+    synonyms: [monitored account]
+    attributes:
+      - {name: id, type: identifier, data_class: internal, required: true}
+      - {name: product_type, type: string, data_class: internal, required: true}
+      - {name: customer_id, type: identifier, data_class: confidential, required: true}
+    relations:
+      - {type: ownedBy, target: Customer, cardinality: "1"}
+    evidence: "Monitoring covers retail deposit and credit accounts."
+  - name: RiskCase
+    definition: An investigation opened from a fraud, AML or credit alert, carrying its score and reason codes.
+    data_class: confidential
+    owner: retail-risk
+    synonyms: [investigation]
+    attributes:
+      - {name: case_type, type: string, data_class: internal, required: true}
+      - {name: alert_id, type: identifier, data_class: internal, required: true}
+      - {name: score, type: number, data_class: confidential, required: true}
+      - {name: reason_codes, type: string, data_class: confidential, required: true}
+      - {name: reason_code_count, type: integer, data_class: internal, required: true}
+      - {name: snapshot_id, type: identifier, data_class: internal, required: true}
+      - {name: suspected_money_laundering, type: boolean, data_class: confidential, required: true}
+      - {name: lctr_threshold_met, type: boolean, data_class: confidential, required: true}
+    relations:
+      - {type: belongsTo, target: MonitoredAccount, cardinality: "1"}
+    evidence: "Every alert that is investigated becomes a case with its score and reason codes."
+  - name: AccountRestriction
+    definition: A temporary restriction on an account, such as blocking outgoing payments, placed to stop suspected fraud.
+    data_class: confidential
+    owner: retail-risk
+    synonyms: [account block]
+    attributes:
+      - {name: case_id, type: identifier, data_class: internal, required: true}
+      - {name: restriction, type: string, data_class: internal, required: true}
+      - {name: fraud_score, type: number, data_class: confidential, required: true}
+      - {name: restrict_threshold, type: number, data_class: internal, required: true}
+      - {name: duration_hours, type: integer, data_class: internal, required: true}
+      - {name: vulnerable_customer, type: boolean, data_class: confidential, required: true}
+    relations:
+      - {type: belongsTo, target: MonitoredAccount, cardinality: "1"}
+    evidence: "Restrictions are temporary, evidenced and reviewed."
+  - name: CreditLimitChange
+    definition: A reduction of a revolving credit limit following an early-warning review.
+    data_class: confidential
+    owner: retail-credit-risk
+    synonyms: [limit reduction]
+    attributes:
+      - {name: case_id, type: identifier, data_class: internal, required: true}
+      - {name: current_limit_cents, type: money, data_class: confidential, required: true}
+      - {name: new_limit_cents, type: money, data_class: confidential, required: true}
+      - {name: balance_cents, type: money, data_class: confidential, required: true}
+      - {name: ews_score, type: number, data_class: confidential, required: true}
+      - {name: review_threshold, type: number, data_class: internal, required: true}
+      - {name: notice_days, type: integer, data_class: internal, required: true}
+      - {name: policy_notice_days, type: integer, data_class: internal, required: true}
+    relations:
+      - {type: belongsTo, target: MonitoredAccount, cardinality: "1"}
+    evidence: "Limit reductions follow an early-warning review and the firm's notice policy."
+rules:
+  - target: RiskCase
+    evidence: "Cases are fraud, AML or credit cases."
+    rule: {id: R-RISKCASE-TYPE, name: Known case type, severity: block,
+           expression: "case_type in ['fraud', 'aml', 'credit']", message: "case type must be fraud, aml or credit"}
+  - target: RiskCase
+    evidence: "Every case carries the reason codes that explain its score."
+    rule: {id: R-RISKCASE-REASONS, name: Reason codes present, severity: block,
+           expression: "reason_code_count >= 1", message: "a case needs at least one reason code (explainability)"}
+  - target: RiskCase
+    evidence: "Scores are on a 0 to 100 scale."
+    rule: {id: R-RISKCASE-SCORE-RANGE, name: Score in range, severity: block,
+           expression: "score >= 0 and score <= 100", message: "score must be between 0 and 100"}
+  - target: RiskCase
+    evidence: "Possible money laundering is handled by the AML officer, who decides on any FINTRAC report."
+    rule: {id: R-RISKCASE-AML-REFERRAL, name: AML indicators go to the AML officer, severity: require_approval,
+           approval_role: aml_officer, expression: "not suspected_money_laundering and not lctr_threshold_met",
+           message: "AML indicators present; the AML officer takes the case and decides on FINTRAC reporting"}
+  - target: AccountRestriction
+    evidence: "Restrictions are placed only from an open case."
+    rule: {id: R-ACCOUNTRESTRICTION-CASE, name: Restriction has a case, severity: block,
+           expression: "len(case_id) > 0", message: "a restriction must reference a case"}
+  - target: AccountRestriction
+    evidence: "A restriction needs a fraud score at or above the policy threshold."
+    rule: {id: R-ACCOUNTRESTRICTION-EVIDENCE, name: Score supports restriction, severity: block,
+           expression: "fraud_score >= restrict_threshold", message: "fraud score is below the restriction threshold"}
+  - target: AccountRestriction
+    evidence: "Only defined restriction types are used."
+    rule: {id: R-ACCOUNTRESTRICTION-TYPE, name: Known restriction type, severity: block,
+           expression: "restriction in ['outgoing_payments', 'card', 'all']", message: "unknown restriction type"}
+  - target: AccountRestriction
+    evidence: "Restrictions longer than 72 hours need the fraud manager."
+    rule: {id: R-ACCOUNTRESTRICTION-DURATION, name: Restriction within 72 hours, severity: require_approval,
+           approval_role: fraud_manager, expression: "duration_hours <= 72",
+           message: "restriction longer than 72 hours; fraud manager approval required"}
+  - target: AccountRestriction
+    evidence: "Restricting a vulnerable customer's account needs the fraud manager."
+    rule: {id: R-ACCOUNTRESTRICTION-VULNERABLE, name: Vulnerable customer review, severity: require_approval,
+           approval_role: fraud_manager, expression: "not vulnerable_customer",
+           message: "customer is flagged as vulnerable; fraud manager review required"}
+  - target: CreditLimitChange
+    evidence: "Limit changes are opened from a credit case."
+    rule: {id: R-CREDITLIMITCHANGE-CASE, name: Change has a case, severity: block,
+           expression: "len(case_id) > 0", message: "a limit change must reference a credit case"}
+  - target: CreditLimitChange
+    evidence: "This action only reduces limits."
+    rule: {id: R-CREDITLIMITCHANGE-REDUCTION, name: Reduction only, severity: block,
+           expression: "new_limit_cents < current_limit_cents", message: "the new limit must be lower than the current limit"}
+  - target: CreditLimitChange
+    evidence: "A limit is never reduced below the outstanding balance."
+    rule: {id: R-CREDITLIMITCHANGE-NOT-BELOW-BALANCE, name: Not below balance, severity: block,
+           expression: "new_limit_cents >= balance_cents", message: "the new limit would be below the outstanding balance"}
+  - target: CreditLimitChange
+    evidence: "A reduction needs an early-warning score at or above the review threshold."
+    rule: {id: R-CREDITLIMITCHANGE-EVIDENCE, name: Early-warning evidence, severity: block,
+           expression: "ews_score >= review_threshold", message: "early-warning score is below the review threshold"}
+  - target: CreditLimitChange
+    evidence: "Customers get the firm's notice period before a reduction takes effect."
+    rule: {id: R-CREDITLIMITCHANGE-NOTICE, name: Notice period respected, severity: block,
+           expression: "notice_days >= policy_notice_days", message: "notice period is shorter than firm policy"}
+actions:
+  - target: MonitoredAccount
+    evidence: "Analysts open cases from alerts in the case management system."
+    action:
+      name: OpenRiskCase
+      description: Open a fraud, AML or credit case from an alert.
+      creates: RiskCase
+      parameters:
+        - {name: case_type, type: string, required: true}
+        - {name: alert_id, type: identifier, required: true}
+        - {name: score, type: number, required: true}
+        - {name: reason_codes, type: string, required: true}
+        - {name: reason_code_count, type: integer, required: true}
+        - {name: snapshot_id, type: identifier, required: true}
+        - {name: suspected_money_laundering, type: boolean, required: true}
+        - {name: lctr_threshold_met, type: boolean, required: true}
+      preconditions: []
+      side_effect: write
+      reversible: true
+      allowed_roles: [fraud_analyst, credit_analyst]
+      tool: {name: case_management, action: open}
+  - target: MonitoredAccount
+    evidence: "A fraud analyst restricts an account to stop losses, confirming the exact restriction."
+    action:
+      name: RestrictAccount
+      description: Place a temporary restriction on an account from an open fraud case.
+      creates: AccountRestriction
+      parameters:
+        - {name: case_id, type: identifier, required: true}
+        - {name: restriction, type: string, required: true}
+        - {name: fraud_score, type: number, required: true}
+        - {name: restrict_threshold, type: number, required: true}
+        - {name: duration_hours, type: integer, required: true}
+        - {name: vulnerable_customer, type: boolean, required: true}
+      preconditions: []
+      side_effect: consequential
+      reversible: true
+      allowed_roles: [fraud_analyst]
+      tool: {name: account_controls, action: restrict}
+  - target: MonitoredAccount
+    evidence: "A credit analyst proposes a limit reduction; a credit officer approves it."
+    action:
+      name: ReduceCreditLimit
+      description: Reduce a revolving credit limit after an early-warning review.
+      creates: CreditLimitChange
+      parameters:
+        - {name: case_id, type: identifier, required: true}
+        - {name: current_limit_cents, type: money, required: true}
+        - {name: new_limit_cents, type: money, required: true}
+        - {name: balance_cents, type: money, required: true}
+        - {name: ews_score, type: number, required: true}
+        - {name: review_threshold, type: number, required: true}
+        - {name: notice_days, type: integer, required: true}
+        - {name: policy_notice_days, type: integer, required: true}
+      preconditions: []
+      side_effect: consequential
+      reversible: false
+      allowed_roles: [credit_analyst]
+      tool: {name: credit_limits, action: reduce}

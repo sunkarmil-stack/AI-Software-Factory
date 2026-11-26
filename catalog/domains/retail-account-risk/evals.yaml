@@ -1,0 +1,20 @@
+# Pipeline C suite for the retail risk product. Critical categories gate release on their own.
+min_average: 0.95
+critical_categories: [alerting_accuracy, grounding, fair_language]
+cases:
+  - {category: alerting_accuracy, kind: alerting, account: acc-101, type: fraud, expect_alert: true, expect_score: 100}
+  - {category: alerting_accuracy, kind: alerting, account: acc-102, type: fraud, expect_alert: true, expect_score: 45}
+  - {category: alerting_accuracy, kind: alerting, account: acc-100, type: fraud, expect_alert: false}
+  - {category: alerting_accuracy, kind: alerting, account: acc-103, type: aml, expect_alert: true}
+  - {category: alerting_accuracy, kind: alerting, account: acc-103, type: fraud, expect_alert: false}
+  - {category: alerting_accuracy, kind: alerting, account: acc-100, type: credit, expect_alert: false}
+  - {category: staging, kind: stage, account: acc-101, expect_stage: 3}
+  - {category: staging, kind: stage, account: acc-102, expect_stage: 2}
+  - {category: next_step, kind: investigation, analyst: risk.fay, account: acc-101, type: fraud, expect_next_step: restrict_and_contact_customer}
+  - {category: next_step, kind: investigation, analyst: risk.fay, account: acc-103, type: aml, expect_next_step: refer_to_aml_officer}
+  - {category: grounding, kind: grounding, account: acc-101, type: fraud,
+     text: "Fraud score 100; 6 transactions within 60 minutes; largest amount 8.0 times the 90-day average.", expect_ungrounded: false}
+  - {category: grounding, kind: grounding, account: acc-101, type: fraud,
+     text: "Fraud score 100; losses of $4,500 are likely.", expect_ungrounded: true}
+  - {category: fair_language, kind: fair_language, text: "The customer is a fraudster who stole funds.", expect_flagged: true}
+  - {category: fair_language, kind: fair_language, text: "Six card-not-present purchases from an unrecognized device.", expect_flagged: false}

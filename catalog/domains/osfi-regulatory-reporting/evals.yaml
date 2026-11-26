@@ -1,0 +1,14 @@
+# Pipeline C suite for the regulatory reporting product. Critical categories gate release on their own.
+min_average: 0.95
+critical_categories: [calculation_accuracy, grounding, no_invented_drivers, reproducibility]
+cases:
+  - {category: calculation_accuracy, kind: calculation, return: LR, period_end: "2026-10-31", cell: leverage_ratio_pct, expect: 4.28}
+  - {category: calculation_accuracy, kind: calculation, return: LR, period_end: "2026-07-31", cell: leverage_ratio_pct, expect: 4.303}
+  - {category: calculation_accuracy, kind: calculation, return: LA, period_end: "2026-09-30", cell: lcr_pct, expect: 141.885}
+  - {category: no_invented_drivers, kind: commentary, preparer: fin.pia, return: LR, period_end: "2026-10-31"}
+  - {category: dq_routing, kind: dq_triage, preparer: fin.pia, return: LA, period_end: "2026-10-31", versions: {hqla: 17, load_log: 90}, expect_owner: treasury-data-team}
+  - {category: grounding, kind: grounding, text: "Derivative exposures increased by 9,000 (17.3%), from 52,000 to 61,000.",
+     figures: {prior: 52000, current: 61000, delta: 9000, pct: 17.3}, expect_ungrounded: false}
+  - {category: grounding, kind: grounding, text: "Derivative exposures increased by 12,500 (24%).",
+     figures: {prior: 52000, current: 61000, delta: 9000, pct: 17.3}, expect_ungrounded: true}
+  - {category: reproducibility, kind: reproducibility, preparer: fin.pia, return: LR, period_end: "2026-10-31"}

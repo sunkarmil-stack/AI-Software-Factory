@@ -1,0 +1,10 @@
+# Data-quality controls applied before calculation (aligned to BCBS 239 risk-data aggregation principles).
+# critical breaks block certification; warnings need the data owner's approval.
+cutoff_days_after_period_end: 5
+checks:
+  - {id: DQ-COMPLETENESS, dimension: completeness, severity: critical, description: every source field the return needs is present for the period}
+  - {id: DQ-LOAD-STATUS, dimension: completeness, severity: critical, description: every source table's load for the period completed}
+  - {id: DQ-TIMELINESS, dimension: timeliness, severity: warning, description: source loads landed within the cut-off after period end}
+  - {id: DQ-VALIDITY, dimension: validity, severity: critical, description: values are numeric}
+  - {id: DQ-RECONCILIATION, dimension: accuracy, severity: warning, applies_to: LR, description: on-balance sheet exposures reconcile to the general ledger,
+     left: on_balance_sheet, right: gl_total_assets_in_scope, warn_pct: 0.1, critical_pct: 0.5}

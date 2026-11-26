@@ -1,0 +1,498 @@
+principals:
+- id: po.priya
+  kind: human
+  roles:
+  - product_owner
+  tenants:
+  - retail
+  token: dev-po.priya
+- id: arch.alex
+  kind: human
+  roles:
+  - architect
+  tenants:
+  - retail
+  - wealth
+  - finance
+  token: dev-arch.alex
+- id: eng.erin
+  kind: human
+  roles:
+  - engineer
+  tenants:
+  - retail
+  - wealth
+  - finance
+  token: dev-eng.erin
+- id: eng.eli
+  kind: human
+  roles:
+  - engineer
+  tenants:
+  - retail
+  - wealth
+  token: dev-eng.eli
+- id: qa.quinn
+  kind: human
+  roles:
+  - qa_owner
+  tenants:
+  - retail
+  - wealth
+  - finance
+  token: dev-qa.quinn
+- id: sec.sam
+  kind: human
+  roles:
+  - security
+  tenants:
+  - retail
+  - wealth
+  - finance
+  token: dev-sec.sam
+- id: rel.rita
+  kind: human
+  roles:
+  - release_owner
+  tenants:
+  - retail
+  - wealth
+  - finance
+  token: dev-rel.rita
+- id: rel.ravi
+  kind: human
+  roles:
+  - release_owner
+  tenants:
+  - retail
+  - wealth
+  token: dev-rel.ravi
+- id: ops.omar
+  kind: human
+  roles:
+  - operator
+  tenants:
+  - retail
+  token: dev-ops.omar
+- id: aud.ada
+  kind: human
+  roles:
+  - auditor
+  tenants:
+  - retail
+  - wealth
+  - finance
+  token: dev-aud.ada
+- id: admin.pat
+  kind: human
+  roles:
+  - platform_admin
+  - operator
+  tenants:
+  - '*'
+  token: dev-admin.pat
+- id: po.paula
+  kind: human
+  roles:
+  - product_owner
+  - engineer
+  tenants:
+  - retail
+  token: dev-po.paula
+- id: onto.olivia
+  kind: human
+  roles:
+  - ontology_owner
+  tenants:
+  - retail
+  - wealth
+  - finance
+  token: dev-onto.olivia
+- id: data.dana
+  kind: human
+  roles:
+  - data_owner
+  tenants:
+  - retail
+  - wealth
+  - finance
+  token: dev-data.dana
+- id: ops.sue
+  kind: human
+  roles:
+  - supervisor
+  tenants:
+  - retail
+  token: dev-ops.sue
+- id: chg.carla
+  kind: human
+  roles:
+  - change_manager
+  tenants:
+  - retail
+  - wealth
+  - finance
+  token: dev-chg.carla
+- id: agent:specification
+  kind: agent
+  tenants:
+  - retail
+  - wealth
+  - finance
+  grants:
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+  - model:invoke@delivery-default
+  - model:invoke@delivery-fallback
+  - model:invoke@product-rag
+- id: agent:architecture
+  kind: agent
+  tenants:
+  - retail
+  - wealth
+  - finance
+  grants:
+  - review:create_item@retail/*
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+  - model:invoke@delivery-default
+  - model:invoke@delivery-fallback
+  - model:invoke@product-rag
+  - review:create_item@wealth/*
+  - review:create_item@finance/*
+- id: agent:planning
+  kind: agent
+  tenants:
+  - retail
+  - wealth
+  - finance
+  grants:
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+  - model:invoke@delivery-default
+  - model:invoke@delivery-fallback
+  - model:invoke@product-rag
+- id: agent:implementation
+  kind: agent
+  tenants:
+  - retail
+  - wealth
+  - finance
+  grants:
+  - repo:push@retail/*
+  - repo:open_pr@retail/*
+  - sandbox:run_tests@retail/*
+  - deploy:request@retail/*
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+  - model:invoke@delivery-default
+  - model:invoke@delivery-fallback
+  - model:invoke@product-rag
+  - repo:push@wealth/*
+  - repo:open_pr@wealth/*
+  - sandbox:run_tests@wealth/*
+  - deploy:request@wealth/*
+  - repo:push@finance/*
+  - repo:open_pr@finance/*
+  - sandbox:run_tests@finance/*
+  - deploy:request@finance/*
+- id: agent:test
+  kind: agent
+  tenants:
+  - retail
+  - wealth
+  - finance
+  grants:
+  - sandbox:run_tests@retail/*
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+  - model:invoke@delivery-default
+  - model:invoke@delivery-fallback
+  - model:invoke@product-rag
+  - sandbox:run_tests@wealth/*
+  - sandbox:run_tests@finance/*
+- id: agent:review
+  kind: agent
+  tenants:
+  - retail
+  - wealth
+  - finance
+  grants:
+  - review:create_item@retail/*
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+  - model:invoke@delivery-default
+  - model:invoke@delivery-fallback
+  - model:invoke@product-rag
+  - review:create_item@wealth/*
+  - review:create_item@finance/*
+- id: agent:release-advisor
+  kind: agent
+  tenants:
+  - retail
+  - wealth
+  - finance
+  grants:
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+  - model:invoke@delivery-default
+  - model:invoke@delivery-fallback
+  - model:invoke@product-rag
+- id: agent:ops-triage
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - review:create_item@*
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+  - model:invoke@delivery-default
+  - model:invoke@delivery-fallback
+  - model:invoke@product-rag
+- id: agent:rag-assistant
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - kb:search@retail/*
+  - review_queue:submit@retail/*
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+  - model:invoke@delivery-default
+  - model:invoke@delivery-fallback
+  - model:invoke@product-rag
+- id: ci-builder
+  kind: workload
+  tenants:
+  - '*'
+  grants:
+  - sandbox:*@*
+  - model:invoke@*
+- id: release-service
+  kind: workload
+  tenants:
+  - '*'
+  grants:
+  - deploy:*@*
+  - secrets:read@*
+- id: repo-service
+  kind: workload
+  tenants:
+  - '*'
+  grants:
+  - repo:*@*
+- id: agent:ontology
+  kind: agent
+  tenants:
+  - retail
+  - wealth
+  - finance
+  grants:
+  - model:invoke@offline-deterministic-v1
+  - model:invoke@claude-delivery
+  - model:invoke@azure-gpt-delivery
+  - model:invoke@delivery-default
+  - model:invoke@delivery-fallback
+  - model:invoke@product-rag
+- id: ontology-actions
+  kind: workload
+  tenants:
+  - '*'
+  grants:
+  - holds:*@*
+  - advice_records:*@*
+  - orders:*@*
+  - return_registry:*@*
+  - regulatory_filing:*@*
+  - case_management:*@*
+  - account_controls:*@*
+  - credit_limits:*@*
+- id: po.wendy
+  kind: human
+  roles:
+  - product_owner
+  tenants:
+  - wealth
+  token: dev-po.wendy
+- id: adv.ada
+  kind: human
+  roles:
+  - advisor
+  tenants:
+  - wealth
+  token: dev-adv.ada
+- id: adv.ben
+  kind: human
+  roles:
+  - advisor
+  tenants:
+  - wealth
+  token: dev-adv.ben
+- id: pm.paolo
+  kind: human
+  roles:
+  - portfolio_manager
+  tenants:
+  - wealth
+  token: dev-pm.paolo
+- id: sup.sid
+  kind: human
+  roles:
+  - supervisor
+  tenants:
+  - wealth
+  token: dev-sup.sid
+- id: cco.cora
+  kind: human
+  roles:
+  - compliance_officer
+  tenants:
+  - wealth
+  token: dev-cco.cora
+- id: agent:advisor-copilot
+  kind: agent
+  tenants:
+  - wealth
+  grants:
+  - portfolio:get_holdings@wealth/*
+  - market_data:quotes@wealth/*
+  - kyc:get@wealth/*
+  - product_shelf:get@wealth/*
+  - model:invoke@advisory-copilot
+- id: agent:suitability-reviewer
+  kind: agent
+  tenants:
+  - wealth
+  grants:
+  - kyc:get@wealth/*
+  - product_shelf:get@wealth/*
+  - model:invoke@advisory-copilot
+- id: ops.wes
+  kind: human
+  roles:
+  - operator
+  tenants:
+  - wealth
+  token: dev-ops.wes
+- id: po.fran
+  kind: human
+  roles:
+  - product_owner
+  tenants:
+  - finance
+  token: dev-po.fran
+- id: fin.pia
+  kind: human
+  roles:
+  - reg_preparer
+  tenants:
+  - finance
+  token: dev-fin.pia
+- id: fin.raj
+  kind: human
+  roles:
+  - reg_reviewer
+  tenants:
+  - finance
+  token: dev-fin.raj
+- id: cfo.cam
+  kind: human
+  roles:
+  - senior_officer
+  tenants:
+  - finance
+  token: dev-cfo.cam
+- id: ops.fio
+  kind: human
+  roles:
+  - operator
+  tenants:
+  - finance
+  token: dev-ops.fio
+- id: regrep-service
+  kind: workload
+  tenants:
+  - finance
+  grants:
+  - lakehouse:capital_components@finance/*
+  - lakehouse:leverage_exposures@finance/*
+  - lakehouse:gl_balances@finance/*
+  - lakehouse:hqla@finance/*
+  - lakehouse:cash_flows_30d@finance/*
+  - lakehouse:load_log@finance/*
+- id: agent:reg-variance-analyst
+  kind: agent
+  tenants:
+  - finance
+  grants:
+  - model:invoke@regreport-analyst
+- id: agent:reg-dq-triage
+  kind: agent
+  tenants:
+  - finance
+  grants:
+  - lakehouse:load_log@finance/*
+  - model:invoke@regreport-analyst
+- id: risk.fay
+  kind: human
+  roles:
+  - fraud_analyst
+  tenants:
+  - retail
+  token: dev-risk.fay
+- id: risk.max
+  kind: human
+  roles:
+  - fraud_manager
+  tenants:
+  - retail
+  token: dev-risk.max
+- id: cred.cal
+  kind: human
+  roles:
+  - credit_analyst
+  tenants:
+  - retail
+  token: dev-cred.cal
+- id: cred.ola
+  kind: human
+  roles:
+  - credit_officer
+  tenants:
+  - retail
+  token: dev-cred.ola
+- id: aml.ann
+  kind: human
+  roles:
+  - aml_officer
+  tenants:
+  - retail
+  token: dev-aml.ann
+- id: risk-monitor
+  kind: workload
+  tenants:
+  - retail
+  grants:
+  - transactions:recent@retail/*
+  - credit_exposure:get@retail/*
+- id: agent:fraud-investigator
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - model:invoke@risk-analyst
+- id: agent:credit-watch-analyst
+  kind: agent
+  tenants:
+  - retail
+  grants:
+  - model:invoke@risk-analyst

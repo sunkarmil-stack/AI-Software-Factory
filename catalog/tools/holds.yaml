@@ -1,0 +1,60 @@
+name: holds
+version: 1.0.0
+owner: deposits-platform
+actions:
+  create:
+    side_effect: write
+    reversible: true
+    data_class: confidential
+    input_schema:
+      type: object
+      required:
+      - subject_id
+      - amount_cents
+      - reason
+      - tenant
+      properties:
+        subject_id:
+          type: string
+        amount_cents:
+          type: integer
+        reason:
+          type: string
+        idempotency_key:
+          type: string
+        tenant:
+          type: string
+    output_schema:
+      type: object
+      required:
+      - hold_id
+      - status
+resource_scope: '{tenant}/ontology'
+data_classes:
+- confidential
+authentication: workload-identity
+authorization: identity grant + tenant + resource + policy tier
+timeout_s: 10
+retry:
+  max: 2
+  retry_on:
+  - timeout
+  - '503'
+idempotency:
+  required: true
+  key: operation id bound to payload digest
+max_concurrency: 4
+circuit:
+  threshold: 3
+  cooldown_s: 10
+endpoint:
+  via: ai_gateway
+  api: deposits
+  actions:
+    create:
+      method: POST
+      path: /holds
+  reconcile:
+    method: GET
+    path: /holds
+    query: operation_id

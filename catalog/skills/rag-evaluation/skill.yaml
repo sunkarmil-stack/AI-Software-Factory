@@ -1,0 +1,31 @@
+name: rag-evaluation
+version: 1.0.0
+owner: ai-platform-team
+description: 'Evaluate retrieval and answers separately: passage recall, answer correctness
+  and citation support.'
+compatibility:
+  factory: '>=0.1'
+  agents: any delivery agent
+inputs:
+- benchmark set
+- pinned release
+outputs:
+- per-category scores
+requested_capabilities:
+- kb.search
+- evidence.read
+data_classes:
+- internal
+- confidential
+side_effects: none
+network: false
+limitations:
+- Scores from small benchmarks have wide variance; report sample sizes.
+risk: low
+tests:
+- name: structure
+  expect_sections:
+  - '## Inputs'
+  - '## Outputs'
+  - '## Procedure'
+  - '## Limitations'

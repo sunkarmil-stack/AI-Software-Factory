@@ -1,0 +1,45 @@
+code: LA
+name: Liquidity Coverage Ratio Return (LCR)
+template_version: "2026.1"
+guideline: OSFI Liquidity Adequacy Requirements (LAR) Guideline, Chapter 2
+frequency: monthly
+filing_days: 14                    # "filed within 14 calendar days of month end" (LA instructions)
+sources:
+  level1: hqla.level1
+  level2a: hqla.level2a
+  level2b: hqla.level2b
+  retail_deposits_balance: cash_flows_30d.retail_deposits[0]
+  retail_deposits_runoff: cash_flows_30d.retail_deposits[1]
+  wholesale_unsecured_balance: cash_flows_30d.wholesale_unsecured[0]
+  wholesale_unsecured_runoff: cash_flows_30d.wholesale_unsecured[1]
+  secured_funding_balance: cash_flows_30d.secured_funding[0]
+  secured_funding_runoff: cash_flows_30d.secured_funding[1]
+  committed_facilities_balance: cash_flows_30d.committed_facilities[0]
+  committed_facilities_runoff: cash_flows_30d.committed_facilities[1]
+  inflows: cash_flows_30d.inflows
+cells:                             # simplified Basel LCR mechanics: haircuts, Level 2 caps, 75% inflow cap
+  - {id: LA.010, key: level1_hqla, label: Level 1 assets, formula: "level1"}
+  - {id: LA.020, key: level2a_adjusted, label: Level 2A assets after 15% haircut, formula: "level2a * 0.85"}
+  - {id: LA.030, key: level2b_adjusted, label: Level 2B assets after 50% haircut, formula: "level2b * 0.5"}
+  - {id: LA.040, key: level2b_capped, label: Level 2B after 15% cap, formula: "min(level2b_adjusted, 15 / 85 * (level1_hqla + level2a_adjusted))"}
+  - {id: LA.050, key: level2_capped, label: Level 2 after 40% cap, formula: "min(level2a_adjusted + level2b_capped, 2 / 3 * level1_hqla)"}
+  - {id: LA.060, key: hqla_total, label: Stock of HQLA, formula: "level1_hqla + level2_capped"}
+  - {id: LA.070, key: retail_outflows, label: Retail deposit outflows, formula: "retail_deposits_balance * retail_deposits_runoff"}
+  - {id: LA.080, key: wholesale_outflows, label: Unsecured wholesale funding outflows, formula: "wholesale_unsecured_balance * wholesale_unsecured_runoff"}
+  - {id: LA.090, key: secured_outflows, label: Secured funding outflows, formula: "secured_funding_balance * secured_funding_runoff"}
+  - {id: LA.100, key: facility_outflows, label: Committed facility outflows, formula: "committed_facilities_balance * committed_facilities_runoff"}
+  - {id: LA.110, key: total_outflows, label: Total cash outflows, formula: "retail_outflows + wholesale_outflows + secured_outflows + facility_outflows"}
+  - {id: LA.120, key: inflows_capped, label: Cash inflows after 75% cap, formula: "min(inflows, 0.75 * total_outflows)"}
+  - {id: LA.130, key: net_cash_outflows, label: Total net cash outflows, formula: "total_outflows - inflows_capped"}
+  - {id: LA.140, key: lcr_pct, label: Liquidity coverage ratio (%), formula: "100 * hqla_total / net_cash_outflows", ratio: true}
+headline: lcr_pct
+requirement: {minimum_pct: 100.0}
+edit_checks:
+  - {id: EC-LA-01, name: Level 2 within 40% of HQLA, expression: "level2_capped <= 0.4 * hqla_total + 0.001"}
+  - {id: EC-LA-02, name: Inflows capped at 75% of outflows, expression: "inflows_capped <= 0.75 * total_outflows + 0.001"}
+  - {id: EC-LA-03, name: HQLA components are non-negative, expression: "min(level1, level2a, level2b) >= 0"}
+  - {id: EC-LA-04, name: Run-off rates between 0 and 1, expression: "max(retail_deposits_runoff, wholesale_unsecured_runoff, secured_funding_runoff, committed_facilities_runoff) <= 1 and min(retail_deposits_runoff, wholesale_unsecured_runoff, secured_funding_runoff, committed_facilities_runoff) >= 0"}
+variance:
+  compare_to: previous_month
+  material_pct: 10.0
+  material_abs: 5000

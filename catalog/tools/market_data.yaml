@@ -1,0 +1,45 @@
+name: market_data
+version: 1.0.0
+owner: market-data-services
+actions:
+  quotes:
+    side_effect: read
+    input_schema:
+      type: object
+      required:
+      - codes
+      properties:
+        codes:
+          type: array
+    output_schema:
+      type: object
+      required:
+      - prices_cents
+      - as_of
+      properties: {}
+resource_scope: '{tenant}/{project}'
+data_classes:
+- internal
+authentication: workload-identity
+authorization: identity grant + tenant + resource + policy tier
+circuit:
+  threshold: 3
+  cooldown_s: 10
+max_concurrency: 8
+timeout_s: 10
+retry:
+  max: 2
+  retry_on:
+  - timeout
+  - '429'
+  - '503'
+idempotency:
+  required: false
+  key: operation id bound to payload digest
+endpoint:
+  via: ai_gateway
+  api: market-data
+  actions:
+    quotes:
+      method: GET
+      path: /quotes

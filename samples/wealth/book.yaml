@@ -1,0 +1,26 @@
+# Synthetic book of record for nonproduction (Boundary A: no real client data).
+as_of: "2026-11-24"
+accounts:
+  ACC-W-1001:
+    client_id: CL-1001
+    account_type: RRSP
+    cash_cents: 1200000
+    holdings: {CDN-EQ-IDX: 800, GLB-EQ-IDX: 500, CDN-BOND-AGG: 600}
+    ips: {max_concentration_pct: 40.0, targets_pct: {equity: 60.0, fixed_income: 35.0, cash: 5.0}}
+  ACC-W-1002:
+    client_id: CL-1002
+    account_type: TFSA
+    cash_cents: 300000
+    holdings: {CDN-BOND-AGG: 900, CDN-EQ-IDX: 100}
+    ips: {max_concentration_pct: 70.0, targets_pct: {equity: 30.0, fixed_income: 65.0, cash: 5.0}}
+kyc:
+  ACC-W-1001: {client_id: CL-1001, risk_tolerance: 3, time_horizon: long, kyc_updated_on: "2026-07-27"}
+  ACC-W-1002: {client_id: CL-1002, risk_tolerance: 2, time_horizon: medium, kyc_updated_on: "2025-09-20"}
+prices_cents: {CDN-EQ-IDX: 3850, GLB-EQ-IDX: 4120, CDN-BOND-AGG: 2790, TECH-THEME: 6600, PROP-BAL-FUND: 1525, CRYPTO-ETF: 1900}
+products:
+  CDN-EQ-IDX:    {risk_rating: 3, asset_class: equity, kyp_reviewed: true, proprietary: false}
+  GLB-EQ-IDX:    {risk_rating: 3, asset_class: equity, kyp_reviewed: true, proprietary: false}
+  CDN-BOND-AGG:  {risk_rating: 2, asset_class: fixed_income, kyp_reviewed: true, proprietary: false}
+  TECH-THEME:    {risk_rating: 5, asset_class: equity, kyp_reviewed: true, proprietary: false}
+  PROP-BAL-FUND: {risk_rating: 3, asset_class: balanced, kyp_reviewed: true, proprietary: true}
+  CRYPTO-ETF:    {risk_rating: 5, asset_class: alternative, kyp_reviewed: false, proprietary: false}

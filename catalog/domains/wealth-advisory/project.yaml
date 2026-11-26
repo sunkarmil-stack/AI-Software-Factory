@@ -1,0 +1,24 @@
+# Domain pack: everything a new line of business needs, as reviewed configuration.
+# Loaded by `python -m factory.cli domain load wealth-advisory` (factory/domains.py).
+project: wealth-advisory
+tenant: wealth
+risk_tier: 3                       # client-facing advice and orders: highest tier
+budget_usd: 200.0
+template: fastapi-service
+owners:
+  product_owner: po.wendy
+  architect: arch.alex
+  engineer: eng.erin
+  qa_owner: qa.quinn
+  release_owner: rel.rita
+  operator: ops.wes
+spec: samples/specs/wealth-advice-api.v1.yaml
+ontology: ontology.yaml            # proposed through governance, never seeded
+evals: evals.yaml
+product_agents: [advisor-copilot, suitability-reviewer]
+tools: [portfolio, market_data, kyc, product_shelf, advice_records, orders]
+model_route: advisory-copilot
+data_classes_allowed: [public, internal, confidential]   # restricted (MNPI) blocked until information barriers exist
+firm_policy:
+  kyc_max_age_days: 365            # firm policy; NI 31-103 s.13.2 sets minimum update frequencies - confirm with Compliance
+  as_of_source: market_data        # point-in-time snapshot id is recorded with every recommendation

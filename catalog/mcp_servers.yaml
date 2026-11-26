@@ -1,0 +1,19 @@
+# Approved MCP servers (REQ 020). Only these identities connect; tool input schemas are pinned:
+# a changed tool definition is refused until it is reviewed and re-pinned.
+servers:
+  databricks-regrep:
+    description: Databricks managed MCP server for Unity Catalog functions in regrep.gold
+      (certified, read-only SQL functions)
+    url: https://<workspace-hostname>/api/2.0/mcp/functions/regrep/gold
+    identity_fingerprint: sha256:databricks-regrep-standin
+    protocol_versions:
+    - '2025-06-18'
+    - '2025-11-25'
+    oauth_scope: unity-catalog
+    pinned_tools:
+      regrep__gold__capital_components: sha256:52bacf5f4067d1e6eac66e3491ed895be7dc96dfeef3eb1958224e4c17fda6c1
+      regrep__gold__leverage_exposures: sha256:52bacf5f4067d1e6eac66e3491ed895be7dc96dfeef3eb1958224e4c17fda6c1
+      regrep__gold__gl_balances: sha256:52bacf5f4067d1e6eac66e3491ed895be7dc96dfeef3eb1958224e4c17fda6c1
+      regrep__gold__hqla: sha256:52bacf5f4067d1e6eac66e3491ed895be7dc96dfeef3eb1958224e4c17fda6c1
+      regrep__gold__cash_flows_30d: sha256:52bacf5f4067d1e6eac66e3491ed895be7dc96dfeef3eb1958224e4c17fda6c1
+      regrep__gold__load_log: sha256:52bacf5f4067d1e6eac66e3491ed895be7dc96dfeef3eb1958224e4c17fda6c1
