@@ -1,0 +1,97 @@
+{
+  "info": {
+    "title": "Wealth Advice API",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/accounts/{account_id}": {
+      "get": {
+        "operationId": "getAccount",
+        "responses": {
+          "200": {
+            "description": "account"
+          },
+          "401": {
+            "description": "unauthenticated"
+          },
+          "403": {
+            "description": "forbidden"
+          },
+          "404": {
+            "description": "not found"
+          }
+        },
+        "x-require-mfa": false,
+        "x-required-scope": "advice:read"
+      }
+    },
+    "/accounts/{account_id}/recommendations": {
+      "post": {
+        "operationId": "recordRecommendation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "amount_cents": {
+                    "maximum": 1000000000,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "idempotency_key": {
+                    "type": "string"
+                  },
+                  "product_code": {
+                    "type": "string"
+                  },
+                  "rationale": {
+                    "type": "string"
+                  },
+                  "side": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "product_code",
+                  "side",
+                  "amount_cents",
+                  "rationale"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "recommendation recorded"
+          },
+          "400": {
+            "description": "invalid"
+          },
+          "403": {
+            "description": "forbidden"
+          },
+          "404": {
+            "description": "not found"
+          }
+        },
+        "x-require-mfa": true,
+        "x-required-scope": "advice:write"
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "healthz",
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        },
+        "x-require-mfa": false,
+        "x-required-scope": "public"
+      }
+    }
+  }
+}
