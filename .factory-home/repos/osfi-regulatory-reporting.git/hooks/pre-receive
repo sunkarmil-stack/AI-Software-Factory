@@ -1,0 +1,11 @@
+#!/bin/sh
+while read old new ref; do
+  case "$ref" in
+    refs/heads/main|refs/heads/master|refs/heads/release/*)
+      if [ "$FACTORY_REPO_SERVICE_TOKEN" != "4c53eb9d2d3c556373826cde19835f9e" ]; then
+        echo "REJECTED: $ref is protected; only the repo service may update it" >&2
+        exit 1
+      fi;;
+  esac
+done
+exit 0

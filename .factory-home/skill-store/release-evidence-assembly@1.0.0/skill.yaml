@@ -1,0 +1,29 @@
+name: release-evidence-assembly
+version: 1.0.0
+owner: ai-platform-team
+description: Assemble and summarize release evidence for human release owners.
+compatibility:
+  factory: '>=0.1'
+  agents: any delivery agent
+inputs:
+- release manifest
+- check reports
+outputs:
+- evidence completeness summary
+requested_capabilities:
+- evidence.read
+data_classes:
+- internal
+- confidential
+side_effects: none
+network: false
+limitations:
+- Cannot authorize promotion.
+risk: low
+tests:
+- name: structure
+  expect_sections:
+  - '## Inputs'
+  - '## Outputs'
+  - '## Procedure'
+  - '## Limitations'

@@ -28,6 +28,7 @@ def main(argv=None):
     sub.add_parser("demo-rag")
     dm = sub.add_parser("domain", help="load a domain pack: domain load NAME")
     dm.add_argument("op", choices=["load", "show"]); dm.add_argument("name")
+    sub.add_parser("doctor", help="check this machine can run the factory (Python, git, pytest, sandbox)")
     sub.add_parser("demo-risk", help="retail account risk: fraud and AML monitoring, credit early warning")
     sub.add_parser("demo-osfi", help="OSFI regulatory reporting product: Databricks via MCP, DQ, lineage, filing")
     sub.add_parser("demo-wealth", help="wealth-advisory product: onboarding, governed ontology, advisor workflow")
@@ -64,6 +65,9 @@ def main(argv=None):
                   f"proposals awaiting approval, {len(out['invalid'])} invalid")
             for p in out["proposals"]:
                 print(f"  {p['id']} {p['kind']:<12} {p['target']:<18} {p['status']:<8} needs {p['roles']}")
+    elif args.cmd == "doctor":
+        from .doctor import main as doctor
+        raise SystemExit(doctor())
     elif args.cmd == "demo-risk":
         from .demo_retailrisk import main as risk_demo
         risk_demo()

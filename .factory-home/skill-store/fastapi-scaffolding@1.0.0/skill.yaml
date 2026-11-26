@@ -1,0 +1,44 @@
+name: fastapi-scaffolding
+version: 1.0.0
+owner: ai-platform-team
+description: Generate a FastAPI service from the approved contract using the hexagonal
+  template (framework-neutral handlers + FastAPI adapter).
+compatibility:
+  factory: '>=0.1'
+  agents: any delivery agent
+inputs:
+- normalized spec
+- contract
+outputs:
+- app/routes.py
+- app/main.py
+- openapi.json
+requested_capabilities:
+- repo.write_branch
+- sandbox.run
+data_classes:
+- internal
+- confidential
+side_effects: workspace-write
+network: false
+limitations:
+- Template codegen covers get/list/create_child shapes; other shapes need engineer
+  authoring.
+risk: medium
+tests:
+- name: structure
+  expect_sections:
+  - '## Inputs'
+  - '## Outputs'
+  - '## Procedure'
+  - '## Limitations'
+- name: handler-names
+  input:
+    endpoints:
+    - operation_id: getAccount
+    - operation_id: createHold
+  expect:
+    handlers:
+    - get_account
+    - create_hold
+    count: 2

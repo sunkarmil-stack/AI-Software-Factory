@@ -63,7 +63,13 @@ def build_impls(f) -> dict[str, ToolImpl]:
     def sandbox(action, args, ctx):
         sb = f.sandboxes.active[args["sandbox_id"]]
         r = sb.pytest(args.get("paths", ["tests/unit"]))
-        return {"passed": r.code == 0, "summary": (r.stdout.strip().splitlines() or ["no output"])[-1]}
+        summary = (r.stdout.strip().splitlines() or [""])[-1]
+        if r.code != 0 and not summary:
+            # the test runner did not start: surface its error (redacted) instead of "no output"
+            from .core.evidence import redact
+            err = [ln for ln in r.stderr.strip().splitlines() if ln.strip()]
+            summary = f"exit code {r.code}; " + (redact(" | ".join(err[-3:]))[-400:] if err else "no output on stdout or stderr")
+        return {"passed": r.code == 0, "summary": summary}
 
     def review(action, args, ctx):
         rid = new_id("RVW")

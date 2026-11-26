@@ -370,7 +370,14 @@ State goes to `$FACTORY_HOME` (default `./.factory-home`). Requirements: Python 
 
 ### Running on Windows
 
-The factory runs on Linux, macOS and Windows. On Windows:
+The factory runs on Linux, macOS and Windows. First install the requirements and run the checks:
+
+```powershell
+python -m pip install -r requirements.txt
+python -m factory.cli doctor      # Python, modules, git, and a one-test run inside the sandbox
+```
+
+On Windows:
 
 - Install [Git for Windows](https://git-scm.com/download/win) and keep it on `PATH`. The repository protection hooks
   are shell scripts, and Git for Windows runs them with its bundled `sh`.

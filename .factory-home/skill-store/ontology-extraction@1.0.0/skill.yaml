@@ -1,0 +1,15 @@
+name: ontology-extraction
+version: 1.0.0
+owner: data-governance
+description: Propose business ontology concepts, definitions, synonyms and relations grounded in specs and documents.
+compatibility: {factory: ">=0.1", agents: ontology}
+inputs: [normalized spec, glossary and policy documents, current ontology]
+outputs: [definition proposals with evidence quotes, synonym proposals]
+requested_capabilities: [spec.read, kb.search]
+data_classes: [internal, confidential]
+side_effects: none
+network: false
+limitations: [Proposals only; validation and human approval decide what enters the ontology]
+risk: low
+tests:
+  - {name: structure, expect_sections: ["## Inputs", "## Outputs", "## Procedure", "## Limitations"]}

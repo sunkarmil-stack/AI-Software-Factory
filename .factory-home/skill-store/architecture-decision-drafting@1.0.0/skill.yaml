@@ -1,0 +1,31 @@
+name: architecture-decision-drafting
+version: 1.0.0
+owner: ai-platform-team
+description: Draft architecture decision records with context, options, decision,
+  consequences, evidence and revisit triggers.
+compatibility:
+  factory: '>=0.1'
+  agents: any delivery agent
+inputs:
+- spec
+- existing ADRs
+outputs:
+- ADR drafts with status proposed
+requested_capabilities:
+- spec.read
+- spec.comment
+data_classes:
+- internal
+- confidential
+side_effects: none
+network: false
+limitations:
+- Drafts only; the lead architect approves.
+risk: low
+tests:
+- name: structure
+  expect_sections:
+  - '## Inputs'
+  - '## Outputs'
+  - '## Procedure'
+  - '## Limitations'
