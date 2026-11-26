@@ -18,6 +18,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from ..core.evidence import Ledger, redact
 from ..core.platform import IS_WINDOWS, TEXT, child_env, rmtree
@@ -35,6 +36,8 @@ SAFE_ENV = child_env({"PYTHONDONTWRITEBYTECODE": "1",
 
 def _limits():
     """POSIX only: CPU, file-size and memory limits, and a new session so the child cannot signal the factory."""
+    if sys.platform == "win32" or resource is None:   # never called on Windows; also narrows types for checkers
+        return
     resource.setrlimit(resource.RLIMIT_CPU, (120, 120))
     resource.setrlimit(resource.RLIMIT_FSIZE, (64 * 2**20, 64 * 2**20))
     try:
@@ -84,7 +87,7 @@ class Sandbox:
                     self.image or "python:3.12-slim", *cmd]
             r = subprocess.run(full, capture_output=True, timeout=timeout, **TEXT)
         else:
-            isolation = ({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if IS_WINDOWS
+            isolation: dict[str, Any] = ({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if IS_WINDOWS
                          else {"preexec_fn": _limits})
             r = subprocess.run(cmd, cwd=str(self.work), env=self.env(), capture_output=True, timeout=timeout,
                                **TEXT, **isolation)
