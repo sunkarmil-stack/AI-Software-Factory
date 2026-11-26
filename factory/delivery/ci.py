@@ -33,6 +33,12 @@ SECRET_RE = [re.compile(p) for p in [r"AKIA[0-9A-Z]{16}", r"-----BEGIN [A-Z ]*PR
 BUILD_INPUTS = ["app", "openapi.json", "requirements.lock", "Dockerfile", "deploy", "pyproject.toml"]
 CI_ENV = {"PATH": "/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8", "PYTHONDONTWRITEBYTECODE": "1",
           "http_proxy": "http://127.0.0.1:9", "https_proxy": "http://127.0.0.1:9"}
+if sys.platform == "win32":
+    # Windows Python needs these to start (SYSTEMROOT) and to find user-site packages such as pytest (APPDATA).
+    import os
+    CI_ENV.update({k: os.environ[k] for k in ("SYSTEMROOT", "WINDIR", "COMSPEC", "TEMP", "TMP", "APPDATA",
+                                              "LOCALAPPDATA", "USERPROFILE") if k in os.environ})
+    CI_ENV["PATH"] = os.pathsep.join([str(Path(sys.executable).parent), os.environ.get("SYSTEMROOT", r"C:\Windows") + r"\System32"])
 
 
 class QAStore:
@@ -213,7 +219,7 @@ class TrustedCI:
         (src / "tests" / "acceptance").mkdir(parents=True)
         (src / "tests" / "acceptance" / "test_protected.py").write_text(acc_src, encoding="utf-8")
         unit = self._py(src, ["-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/unit"]) if (src / "tests" / "unit").exists() else None
-        check("unit_tests", [] if unit is None or unit.returncode == 0 else [unit.stdout[-1500:]])
+        check("unit_tests", [] if unit is None or unit.returncode == 0 else [(unit.stdout + unit.stderr)[-1500:]])
         acc = self._py(src, ["-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/acceptance", f"--junitxml={work}/acc.xml"])
         results = {}
         if (work / "acc.xml").exists():
@@ -223,7 +229,7 @@ class TrustedCI:
                 if m:
                     results[f"AC-{m.group(1)}"] = "failed" if failed else "passed"
         check("acceptance_tests", [] if acc.returncode == 0 else [f"{k} failed" for k, v in results.items() if v != "passed"]
-              or [acc.stdout[-1500:]])
+              or [(acc.stdout + acc.stderr)[-1500:]])
         details["acceptance_results"] = results
         # contract tests
         rt = self._py(src, ["-c", "import json,app.routes as r;print(json.dumps([[x.method,x.path,x.operation_id,x.required_scope] for x in r.ROUTES]))"])
